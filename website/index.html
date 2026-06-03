@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CrabDuino — Write real Rust. Flash it to Arduino.</title>
+    <meta
+      name="description"
+      content="CrabDuino is a beautiful desktop IDE for writing real Rust and flashing it straight to your Arduino Uno. No .ino translation — just no_std Rust, one click to build and flash."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <!-- pointer glow + animated aurora live behind everything -->
+    <div class="cursor-glow" aria-hidden="true"></div>
+    <div class="aurora" aria-hidden="true">
+      <span class="blob blob-1"></span>
+      <span class="blob blob-2"></span>
+      <span class="blob blob-3"></span>
+      <div class="grid-lines"></div>
+    </div>
+
+    <!-- ===== NAV ===================================================== -->
+    <header class="nav" id="nav">
+      <a class="brand" href="#top" aria-label="CrabDuino home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="30" height="30">
+            <g fill="none" stroke="currentColor" stroke-width="3.4"
+               stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 40c-6 0-10-4-12-9" />
+              <path d="M48 40c6 0 10-4 12-9" />
+              <path d="M20 30c-5-3-7-9-6-15" />
+              <path d="M44 30c5-3 7-9 6-15" />
+              <ellipse cx="32" cy="40" rx="17" ry="12"
+                       fill="currentColor" fill-opacity="0.16" />
+              <path d="M14 44c4 6 11 9 18 9s14-3 18-9" />
+            </g>
+            <circle cx="25" cy="38" r="2.6" fill="currentColor" />
+            <circle cx="39" cy="38" r="2.6" fill="currentColor" />
+          </svg>
+        </span>
+        <span class="brand-name">Crab<span class="accent">Duino</span></span>
+      </a>
+
+      <nav class="nav-links" id="navLinks">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#code">The code</a>
+        <a href="#download" class="nav-cta">Download</a>
+      </nav>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <main id="top">
+      <!-- ===== HERO ================================================== -->
+      <section class="hero">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">RUST&nbsp;·&nbsp;EMBEDDED&nbsp;·&nbsp;ARDUINO&nbsp;UNO</p>
+          <h1 class="hero-title">
+            Write <span class="grad">real Rust.</span><br />
+            Flash it to Arduino.
+          </h1>
+          <p class="hero-sub">
+            CrabDuino is a beautiful desktop IDE that compiles the Rust
+            <em>you</em> write — no <code>.ino</code> translation, no magic —
+            straight onto the Arduino Uno. Build and flash in one click.
+          </p>
+          <div class="hero-actions">
+            <a href="#download" class="btn btn-primary">
+              <span class="ic">↓</span> Download CrabDuino
+            </a>
+            <a href="#code" class="btn btn-ghost">See it in action →</a>
+          </div>
+          <p class="hero-trust">
+            <span class="dot"></span> Powered by <b>avr-hal</b> · <b>ravedude</b>
+            · <b>Tauri</b> — 100% <code>no_std</code> Rust.
+          </p>
+        </div>
+
+        <!-- editor mockup -->
+        <div class="hero-app reveal" data-tilt>
+          <div class="window">
+            <div class="window-bar">
+              <span class="tl tl-1"></span>
+              <span class="tl tl-2"></span>
+              <span class="tl tl-3"></span>
+              <span class="window-title">blink.rs — CrabDuino</span>
+            </div>
+            <pre class="code"><code><span class="c-com">// Blink the on-board LED — pure Rust, no_std.</span>
+<span class="c-at">#![no_std]</span>
+<span class="c-at">#![no_main]</span>
+
+<span class="c-kw">use</span> panic_halt <span class="c-kw">as</span> _;
+
+<span class="c-mac">#[arduino_hal::entry]</span>
+<span class="c-kw">fn</span> <span class="c-fn">main</span>() -&gt; ! {
+    <span class="c-kw">let</span> dp = arduino_hal::<span class="c-fn">Peripherals</span>::<span class="c-fn">take</span>().<span class="c-fn">unwrap</span>();
+    <span class="c-kw">let</span> pins = <span class="c-mac">arduino_hal::pins!</span>(dp);
+    <span class="c-kw">let</span> <span class="c-kw">mut</span> led = pins.d13.<span class="c-fn">into_output</span>();
+
+    <span class="c-kw">loop</span> {
+        led.<span class="c-fn">toggle</span>();
+        arduino_hal::<span class="c-fn">delay_ms</span>(<span class="c-num">500</span>);
+    }
+}<span class="caret">▍</span></code></pre>
+            <div class="terminal" id="terminal">
+              <div class="terminal-head">
+                <span class="terminal-dot"></span> OUTPUT
+              </div>
+              <div class="terminal-body" id="termBody"></div>
+            </div>
+          </div>
+          <div class="board" aria-hidden="true">
+            <span class="board-label">UNO</span>
+            <span class="board-led" id="boardLed"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MARQUEE =============================================== -->
+      <div class="marquee reveal" aria-hidden="true">
+        <div class="marquee-track">
+          <span>no_std</span><span>·</span><span>avr-hal</span><span>·</span>
+          <span>ravedude</span><span>·</span><span>ATmega328P</span><span>·</span>
+          <span>LTO + opt-level=s</span><span>·</span><span>cargo build</span><span>·</span>
+          <span>Tauri v2</span><span>·</span><span>Source Code Pro</span><span>·</span>
+          <span>no_std</span><span>·</span><span>avr-hal</span><span>·</span>
+          <span>ravedude</span><span>·</span><span>ATmega328P</span><span>·</span>
+          <span>LTO + opt-level=s</span><span>·</span><span>cargo build</span><span>·</span>
+          <span>Tauri v2</span><span>·</span><span>Source Code Pro</span><span>·</span>
+        </div>
+      </div>
+
+      <!-- ===== FEATURES ============================================= -->
+      <section class="section" id="features">
+        <header class="section-head reveal">
+          <p class="kicker">Why CrabDuino</p>
+          <h2>An IDE that respects your Rust.</h2>
+          <p class="lede">
+            Everything you need to go from a blank <code>main.rs</code> to a
+            blinking board — and nothing that gets in the way.
+          </p>
+        </header>
+
+        <div class="cards">
+          <article class="card reveal" data-tilt>
+            <div class="card-ic">⚡</div>
+            <h3>One-click build &amp; flash</h3>
+            <p>
+              Hit <b>Build</b> to compile, <b>Flash</b> to program your Uno and
+              open the serial console. CrabDuino shells out to real
+              <code>cargo</code> + <code>ravedude</code>.
+            </p>
+          </article>
+
+          <article class="card reveal" data-tilt>
+            <div class="card-ic">🦀</div>
+            <h3>Real Rust, not <code>.ino</code></h3>
+            <p>
+              No sketch translation layer. You write genuine
+              <code>no_std</code> Rust against <code>avr-hal</code> — the same
+              code an embedded engineer would ship.
+            </p>
+          </article>
+
+          <article class="card reveal" data-tilt>
+            <div class="card-ic">📦</div>
+            <h3>Tiny binaries</h3>
+            <p>
+              Tuned profiles — <code>LTO</code>, <code>opt-level&nbsp;=&nbsp;s</code>,
+              <code>panic = abort</code> — keep firmware small enough for the
+              ATmega328P's modest flash.
+            </p>
+          </article>
+
+          <article class="card reveal" data-tilt>
+            <div class="card-ic">🔌</div>
+            <h3>Live serial console</h3>
+            <p>
+              Output streams straight into the IDE as your program runs.
+              <code>stdout</code>, <code>stderr</code> and build info are color
+              coded at a glance.
+            </p>
+          </article>
+
+          <article class="card reveal" data-tilt>
+            <div class="card-ic">🗂️</div>
+            <h3>VS Code-style explorer</h3>
+            <p>
+              A real file tree over your firmware: create, rename, drag, drop,
+              and move-to-trash — with a live watcher for external changes.
+            </p>
+          </article>
+
+          <article class="card reveal" data-tilt>
+            <div class="card-ic">🎨</div>
+            <h3>One locked, lovely theme</h3>
+            <p>
+              A hand-picked five-color palette and a single mono typeface —
+              consistent, calm, and easy on the eyes through long sessions.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ===== HOW IT WORKS ========================================= -->
+      <section class="section" id="how">
+        <header class="section-head reveal">
+          <p class="kicker">How it works</p>
+          <h2>Three steps to a Rust-powered board.</h2>
+        </header>
+
+        <ol class="steps">
+          <li class="step reveal">
+            <span class="step-no">01</span>
+            <h3>Write</h3>
+            <p>
+              Open the editor and write Rust against the Arduino Uno's pins,
+              timers and serial.
+            </p>
+            <pre class="snippet"><code><span class="c-kw">let</span> <span class="c-kw">mut</span> led = pins.d13.<span class="c-fn">into_output</span>();</code></pre>
+          </li>
+          <li class="step reveal">
+            <span class="step-no">02</span>
+            <h3>Build</h3>
+            <p>
+              CrabDuino runs <code>cargo build --release</code> with the pinned
+              AVR nightly and streams the result.
+            </p>
+            <pre class="snippet"><code><span class="c-com">$</span> cargo build --release
+   <span class="c-ok">Finished</span> `release` in 2.4s</code></pre>
+          </li>
+          <li class="step reveal">
+            <span class="step-no">03</span>
+            <h3>Flash</h3>
+            <p>
+              Plug in the Uno and hit Flash. <code>ravedude</code> programs the
+              chip and keeps the serial console live.
+            </p>
+            <pre class="snippet"><code><span class="c-com">$</span> cargo run --release
+   <span class="c-ok">Programming</span> /dev/ttyACM0 ✓</code></pre>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ===== CODE SHOWCASE ======================================== -->
+      <section class="section split" id="code">
+        <div class="split-copy reveal">
+          <p class="kicker">The code</p>
+          <h2>It's just Rust. <span class="grad">Really.</span></h2>
+          <p class="lede">
+            No hidden preprocessor, no generated <code>.cpp</code>. What you see
+            is exactly what compiles and runs on the metal.
+          </p>
+          <ul class="ticks">
+            <li>Type-safe pin &amp; peripheral access via <code>avr-hal</code></li>
+            <li>Zero-cost abstractions — no runtime, no allocator</li>
+            <li><code>ufmt</code> for tiny, fast serial formatting</li>
+            <li>Borrow checker on your microcontroller, finally</li>
+          </ul>
+          <a href="#download" class="btn btn-primary">
+            <span class="ic">↓</span> Get started free
+          </a>
+        </div>
+
+        <div class="split-code reveal" data-tilt>
+          <div class="window">
+            <div class="window-bar">
+              <span class="tl tl-1"></span><span class="tl tl-2"></span>
+              <span class="tl tl-3"></span>
+              <span class="window-title">serial.rs</span>
+            </div>
+            <pre class="code"><code><span class="c-mac">#[arduino_hal::entry]</span>
+<span class="c-kw">fn</span> <span class="c-fn">main</span>() -&gt; ! {
+    <span class="c-kw">let</span> dp = arduino_hal::<span class="c-fn">Peripherals</span>::<span class="c-fn">take</span>().<span class="c-fn">unwrap</span>();
+    <span class="c-kw">let</span> pins = <span class="c-mac">arduino_hal::pins!</span>(dp);
+    <span class="c-kw">let</span> <span class="c-kw">mut</span> serial = <span class="c-mac">arduino_hal::default_serial!</span>(dp, pins, <span class="c-num">57600</span>);
+
+    <span class="c-kw">let</span> <span class="c-kw">mut</span> count: <span class="c-ty">u16</span> = <span class="c-num">0</span>;
+    <span class="c-kw">loop</span> {
+        <span class="c-mac">ufmt::uwriteln!</span>(&amp;<span class="c-kw">mut</span> serial, <span class="c-str">"tick {}"</span>, count).<span class="c-fn">unwrap</span>();
+        count = count.<span class="c-fn">wrapping_add</span>(<span class="c-num">1</span>);
+        arduino_hal::<span class="c-fn">delay_ms</span>(<span class="c-num">1000</span>);
+    }
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== DOWNLOAD / CTA ======================================= -->
+      <section class="cta" id="download">
+        <div class="cta-inner reveal">
+          <h2>Ready to make your Arduino <span class="grad">speak Rust?</span></h2>
+          <p>Free and open. Bring your Uno, a USB cable, and a little curiosity.</p>
+          <div class="hero-actions center">
+            <a href="#" class="btn btn-primary btn-lg">
+              <span class="ic">↓</span> Download for Linux
+            </a>
+            <a href="#" class="btn btn-ghost btn-lg">View on GitHub</a>
+          </div>
+          <p class="hero-trust center">
+            <span class="dot"></span> Also building for macOS &amp; Windows.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===== FOOTER ================================================== -->
+    <footer class="footer">
+      <div class="footer-brand">
+        <span class="brand-name">Crab<span class="accent">Duino</span></span>
+        <p>Real Rust for the Arduino Uno.</p>
+      </div>
+      <div class="footer-cols">
+        <div>
+          <h4>Product</h4>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#download">Download</a>
+        </div>
+        <div>
+          <h4>Built on</h4>
+          <a href="https://github.com/rahix/avr-hal">avr-hal</a>
+          <a href="https://tauri.app">Tauri</a>
+          <a href="https://www.rust-lang.org">Rust</a>
+        </div>
+      </div>
+      <p class="footer-fine">© 2026 CrabDuino · Made with 🦀 and a soldering iron.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

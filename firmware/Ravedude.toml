@@ -1,0 +1,6 @@
+[general]
+board = "uno"
+
+# After flashing, open the serial console at 57600 baud (Uno bootloader default).
+open-console = true
+serial-baudrate = 57600

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CrabDuino</title>
+
+    <!-- Vendored CodeMirror 5 (no build step) -->
+    <link rel="stylesheet" href="vendor/codemirror/codemirror.min.css" />
+    <link rel="stylesheet" href="vendor/codemirror/dracula.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <div class="app">
+      <!-- Title bar (frameless window): menus left, window controls right -->
+      <div class="titlebar" data-tauri-drag-region>
+        <div class="menu" data-menu="file">
+          <button class="menu-label">File</button>
+          <div class="menu-items">
+            <button data-action="new">New sketch</button>
+            <button data-action="save">Save <span class="kbd">Ctrl+S</span></button>
+          </div>
+        </div>
+        <div class="menu" data-menu="edit">
+          <button class="menu-label">Edit</button>
+          <div class="menu-items">
+            <button data-action="undo">Undo <span class="kbd">Ctrl+Z</span></button>
+            <button data-action="redo">Redo <span class="kbd">Ctrl+Y</span></button>
+          </div>
+        </div>
+
+        <div class="titlebar-title" data-tauri-drag-region>CrabDuino</div>
+
+        <div class="window-controls">
+          <button id="win-min" class="win-btn" title="Minimize">&#x2013;</button>
+          <button id="win-max" class="win-btn" title="Maximize">&#x25A1;</button>
+          <button id="win-close" class="win-btn win-close" title="Close">&#x2715;</button>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <button id="btn-verify" class="btn"><span class="ic">✓</span> Verify</button>
+        <button id="btn-upload" class="btn btn-primary"><span class="ic">→</span> Upload</button>
+        <button id="btn-stop" class="btn btn-stop" hidden><span class="ic">■</span> Stop</button>
+        <button id="btn-simulator" class="btn btn-ghost">View Simulator</button>
+        <label class="board-picker">
+          <span class="board-picker-label">Board</span>
+          <select id="board-select" class="board-select">
+            <option value="uno">Arduino Uno</option>
+          </select>
+        </label>
+        <div class="toolbar-spacer"></div>
+        <span id="status" class="status">ready</span>
+      </div>
+
+      <!-- Sidebar: file browser -->
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <span class="sidebar-title">FIRMWARE</span>
+          <div class="sidebar-actions">
+            <button id="act-new-file" class="ic-btn" title="New File">🗋</button>
+            <button id="act-new-folder" class="ic-btn" title="New Folder">🗀</button>
+            <button id="act-refresh" class="ic-btn" title="Refresh">⟳</button>
+            <button id="act-collapse" class="ic-btn" title="Collapse Folders">⊟</button>
+          </div>
+        </div>
+        <div id="file-tree" class="file-tree"></div>
+        <div class="resizer resizer-v" id="rz-sidebar" title="Drag to resize"></div>
+      </aside>
+
+      <!-- Main: editor + (overlay) simulator -->
+      <main class="main">
+        <textarea id="editor"></textarea>
+        <div id="simulator" class="simulator" hidden>
+          <div class="sim-card">
+            <div class="sim-title">Simulator</div>
+            <p>The board simulator isn't wired up yet.</p>
+            <p class="muted">Build &amp; flash to a real Uno with Verify / Upload.</p>
+            <button id="btn-close-sim" class="btn btn-ghost">Back to editor</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Console -->
+      <section class="console" id="console-wrap">
+        <div class="resizer resizer-h" id="rz-console" title="Drag to resize"></div>
+        <div class="console-head">
+          <span class="console-title">Output</span>
+          <div class="toolbar-spacer"></div>
+          <button id="btn-clear" class="btn btn-mini">Clear</button>
+          <button id="btn-toggle-console" class="btn btn-mini">▾</button>
+        </div>
+        <pre id="console" class="console-body"></pre>
+      </section>
+    </div>
+
+    <!-- CodeMirror core + Rust mode + addons -->
+    <script src="vendor/codemirror/codemirror.min.js"></script>
+    <script src="vendor/codemirror/rust.min.js"></script>
+    <script src="vendor/codemirror/closebrackets.min.js"></script>
+    <script src="vendor/codemirror/matchbrackets.min.js"></script>
+    <script src="vendor/codemirror/active-line.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
