@@ -7,7 +7,7 @@
 
     <!-- Vendored CodeMirror 5 (no build step) -->
     <link rel="stylesheet" href="vendor/codemirror/codemirror.min.css" />
-    <link rel="stylesheet" href="vendor/codemirror/dracula.css" />
+    <link rel="stylesheet" href="codemirror-github.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
 
@@ -98,6 +98,8 @@
 
     <!-- CodeMirror core + Rust mode + addons -->
     <script src="vendor/codemirror/codemirror.min.js"></script>
+    <!-- rust.min.js is a simple-mode definition; it needs the simple addon. -->
+    <script src="vendor/codemirror/simple.min.js"></script>
     <script src="vendor/codemirror/rust.min.js"></script>
     <script src="vendor/codemirror/closebrackets.min.js"></script>
     <script src="vendor/codemirror/matchbrackets.min.js"></script>

@@ -1,0 +1,93 @@
+/* ============================================================================
+   CrabDuino editor theme — GitHub-style syntax highlighting for CodeMirror 5.
+   Token colors follow GitHub's "Dark" palette; the editor *surface* stays on
+   the product's locked palette (var(--bg-deep)) so it matches the rest of the
+   IDE. Activate with `theme: "github"` in the CodeMirror config.
+   ========================================================================== */
+.cm-s-github.CodeMirror {
+  background: var(--bg-deep);
+  color: var(--c-pale);
+}
+.cm-s-github .CodeMirror-gutters {
+  background: var(--bg-deep);
+  border: none;
+}
+.cm-s-github .CodeMirror-linenumber {
+  color: color-mix(in srgb, var(--c-pale) 38%, var(--c-mauve));
+}
+.cm-s-github .CodeMirror-cursor {
+  border-left: 1.5px solid var(--c-pale);
+}
+.cm-s-github .CodeMirror-selected,
+.cm-s-github .CodeMirror-line::selection,
+.cm-s-github .CodeMirror-line > span::selection {
+  background: color-mix(in srgb, var(--c-clay) 32%, transparent);
+}
+.cm-s-github .CodeMirror-activeline-background {
+  background: color-mix(in srgb, var(--c-pale) 5%, transparent);
+}
+.cm-s-github .CodeMirror-matchingbracket {
+  color: var(--c-pale) !important;
+  border-bottom: 1px solid #79c0ff;
+}
+
+/* ---- GitHub Dark token colors -------------------------------------------- */
+.cm-s-github .cm-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+.cm-s-github .cm-keyword {
+  color: #ff7b72; /* fn, let, loop, use, mut, as … */
+}
+.cm-s-github .cm-operator {
+  color: #ff7b72;
+}
+.cm-s-github .cm-string,
+.cm-s-github .cm-string-2 {
+  color: #a5d6ff;
+}
+.cm-s-github .cm-number,
+.cm-s-github .cm-atom {
+  color: #79c0ff; /* numbers, true/false, lifetimes */
+}
+.cm-s-github .cm-def {
+  color: #d2a8ff; /* function/identifier definitions */
+}
+.cm-s-github .cm-variable {
+  color: var(--c-pale);
+}
+.cm-s-github .cm-variable-2 {
+  color: #ffa657;
+}
+.cm-s-github .cm-variable-3,
+.cm-s-github .cm-type {
+  color: #ffa657; /* primitive & user types: u8, bool, Peripherals */
+}
+.cm-s-github .cm-builtin {
+  color: #79c0ff;
+}
+.cm-s-github .cm-property {
+  color: var(--c-pale);
+}
+.cm-s-github .cm-meta {
+  color: #d2a8ff; /* #[attributes] */
+}
+.cm-s-github .cm-qualifier {
+  color: #ffa657;
+}
+.cm-s-github .cm-tag {
+  color: #7ee787;
+}
+.cm-s-github .cm-attribute {
+  color: #79c0ff;
+}
+.cm-s-github .cm-bracket {
+  color: var(--c-pale);
+}
+.cm-s-github .cm-link {
+  color: #a5d6ff;
+}
+.cm-s-github .cm-error {
+  color: var(--c-pale);
+  background: color-mix(in srgb, var(--c-red) 45%, transparent);
+}

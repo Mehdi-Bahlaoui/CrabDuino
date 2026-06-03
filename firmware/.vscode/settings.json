@@ -1,0 +1,12 @@
+{
+  // Same rust-analyzer fix as the repo-root .vscode/settings.json, in case you
+  // open `firmware/` directly. The `#[arduino_hal::entry]` attribute proc-macro
+  // (from `avr-device-macros`) crashes rust-analyzer's proc-macro server under
+  // the pinned AVR nightly ("all proc-macro server workers have exited").
+  // `cargo build` is unaffected; this only stops RA from expanding it.
+  "rust-analyzer.procMacro.ignored": {
+    "avr-device-macros": ["entry"],
+    "avr_device_macros": ["entry"]
+  },
+  "rust-analyzer.procMacro.attributes.enable": false
+}

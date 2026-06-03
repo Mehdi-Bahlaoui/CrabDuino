@@ -266,17 +266,28 @@ body {
   text-transform: uppercase;
 }
 .board-select {
+  /* Native <select> on WebKitGTK paints its own (white) face + arrow and
+     ignores `background`; appearance:none lets the dark picker show through.
+     We draw our own caret as an SVG background so it stays on-palette. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   border: 0;
-  background: transparent;
+  background-color: transparent;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="7" fill="none" stroke="%23bf7e6f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l4 4 4-4"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right center;
+  padding-right: 18px;
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
   outline: none;
 }
+/* The opened dropdown list is OS-drawn; tint it on-theme where honored. */
 .board-select option {
-  color: var(--c-red);
-  background: var(--c-red);
+  color: var(--text);
+  background: var(--bg-raise);
 }
 .btn-mini {
   padding: 2px 9px;
@@ -398,9 +409,10 @@ body {
   font-size: var(--editor-font);
   border-radius: 8px;
 }
-/* Keep the editor surface on-palette; syntax token colors stay from Dracula. */
-.main .CodeMirror.cm-s-dracula,
-.main .CodeMirror.cm-s-dracula .CodeMirror-gutters {
+/* Editor surface stays on-palette; GitHub token colors come from
+   codemirror-github.css. */
+.main .CodeMirror.cm-s-github,
+.main .CodeMirror.cm-s-github .CodeMirror-gutters {
   background: var(--bg-deep);
 }
 

@@ -27,7 +27,7 @@ fn main() -> ! {
 const cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
   value: STARTER,
   mode: "rust",
-  theme: "dracula",
+  theme: "github",
   lineNumbers: true,
   indentUnit: 4,
   tabSize: 4,
