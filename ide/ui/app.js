@@ -23,6 +23,37 @@ fn main() -> ! {
 }
 `;
 
+// ---- inline SVG icons ------------------------------------------------------
+// The locked mono font (Source Code Pro) has no glyphs for emoji/box-drawing
+// arrows, so every icon is a small stroked SVG that inherits `currentColor`.
+const ICON_PATHS = {
+  chevron: '<polyline points="9 18 15 12 9 6"/>',
+  folder:
+    '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  file: '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>',
+  newFile:
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>',
+  newFolder:
+    '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>',
+  refresh:
+    '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  collapse: '<polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  upload:
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
+  guide:
+    '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z"/>',
+};
+function iconMarkup(name) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ""}</svg>`;
+}
+function setIcon(el, name) {
+  if (el) el.innerHTML = iconMarkup(name);
+}
+// Fill every static [data-icon] holder (toolbar, sidebar, console toggle, …).
+document.querySelectorAll("[data-icon]").forEach((el) => setIcon(el, el.dataset.icon));
+
 // ---- editor (CodeMirror 5) -------------------------------------------------
 const cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
   value: STARTER,
@@ -38,7 +69,14 @@ const cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
 cm.setValue(STARTER);
 
 const code = () => cm.getValue();
-const setCode = (text) => cm.setValue(text);
+// `programmatic` is true while we replace the buffer ourselves (open a file,
+// load a template) so the change handler doesn't flag those as unsaved edits.
+let programmatic = false;
+const setCode = (text) => {
+  programmatic = true;
+  cm.setValue(text);
+  programmatic = false;
+};
 
 // ---- zoom (Ctrl +/-/0, Ctrl+scroll) ----------------------------------------
 // Editor and console share the --editor-font CSS variable, so both scale.
@@ -73,10 +111,13 @@ const $ = (id) => document.getElementById(id);
 const btnVerify = $("btn-verify");
 const btnUpload = $("btn-upload");
 const btnStop = $("btn-stop");
-const statusEl = $("status");
 const consoleEl = $("console");
 const consoleWrap = $("console-wrap");
 const treeEl = $("file-tree");
+const sidebarTitle = $("sidebar-title");
+const projectActionButtons = ["act-new-file", "act-new-folder", "act-refresh", "act-collapse"]
+  .map((id) => $(id))
+  .filter(Boolean);
 
 // ---- console ---------------------------------------------------------------
 // Height is the --console-h grid track; collapsing shrinks the track to the
@@ -86,12 +127,23 @@ function expandConsole() {
   if (!consoleWrap.classList.contains("collapsed")) return;
   consoleWrap.classList.remove("collapsed");
   document.documentElement.style.setProperty("--console-h", lastConsoleH);
-  $("btn-toggle-console").textContent = "▾";
   cm.refresh();
+}
+function isErrorLine(line) {
+  return (
+    /^\s*(error(\[[^\]]+\])?|fatal):/i.test(line) ||
+    /\b(panic|panicked|permission denied|no such file or directory)\b/i.test(line) ||
+    /\b(avrdude|ravedude):.*\b(error|failed|can't|cannot|not responding|not in sync|timeout)\b/i.test(line)
+  );
+}
+function consoleClass(stream, line) {
+  if (stream === "error") return "error";
+  if (stream === "stderr" && isErrorLine(line)) return "error";
+  return stream;
 }
 function logLine(stream, line) {
   const div = document.createElement("div");
-  div.className = `ln ln-${stream}`;
+  div.className = `ln ln-${consoleClass(stream, line)}`;
   div.textContent = line;
   consoleEl.appendChild(div);
   consoleEl.scrollTop = consoleEl.scrollHeight;
@@ -100,19 +152,76 @@ function logLine(stream, line) {
 function clearConsole() {
   consoleEl.innerHTML = "";
 }
-function setStatus(text, kind = "ready") {
-  statusEl.textContent = text;
-  statusEl.className = `status status-${kind}`;
-}
 
 // ---- task state ------------------------------------------------------------
 let busy = false;
+let currentPath = null; // file currently open in the editor (set by openFile)
+let firmwareRoot = null; // canonical active-project path; null until opened
+
 function setBusy(on, flashing = false) {
   busy = on;
-  btnVerify.disabled = on;
-  btnUpload.disabled = on;
   btnStop.hidden = !flashing;
+  updateRunButtons();
 }
+
+// The cargo bin name for the open file. `src/main.rs` is the package's default
+// binary and therefore runs without `--bin`; files under src/bin/<name>.rs use
+// `--bin <name>`. Undefined means the open file is not runnable.
+function currentBin() {
+  if (!currentPath) return undefined;
+  const path = currentPath.replace(/\\/g, "/");
+  const m = path.match(/\/src\/bin\/([^/]+)\.rs$/);
+  if (m) return m[1];
+  return path.endsWith("/src/main.rs") ? null : undefined;
+}
+
+// Verify needs a runnable Rust target; Upload also needs a detected board.
+// Both are off while a task is running.
+function updateRunButtons() {
+  const bin = currentBin();
+  const runnable = !!firmwareRoot && bin !== undefined;
+  btnVerify.disabled = busy || !runnable;
+  btnUpload.disabled = busy || !runnable || !detectedPort;
+}
+
+// ---- board detection -------------------------------------------------------
+// Poll the backend for a connected Arduino Uno. The picker shows the board only
+// while it's detected; Upload is enabled only then, and flashes to its port.
+const boardSelect = $("board-select");
+let detectedPort = null; // serial port of the detected Uno, or null when none
+
+function renderBoard(board) {
+  boardSelect.innerHTML = "";
+  const opt = document.createElement("option");
+  if (board) {
+    detectedPort = board.port;
+    opt.value = board.board;
+    opt.textContent = `${board.label} — ${board.port}`;
+    boardSelect.disabled = false;
+  } else {
+    detectedPort = null;
+    opt.value = "";
+    opt.textContent = "No board detected";
+    boardSelect.disabled = true;
+  }
+  boardSelect.appendChild(opt);
+  updateRunButtons();
+}
+
+async function pollBoard() {
+  let board = null;
+  try {
+    board = await invoke("detect_board");
+  } catch (_) {
+    board = null; // detection failed → treat as no board
+  }
+  // Re-render only on change so we don't clobber the picker every tick.
+  if ((board ? board.port : null) !== detectedPort) renderBoard(board);
+}
+
+renderBoard(null); // start in the "no board" state
+pollBoard();
+setInterval(pollBoard, 2000);
 
 // ---- backend events --------------------------------------------------------
 listen("output", (e) => logLine(e.payload.stream, e.payload.line));
@@ -123,43 +232,61 @@ listen("task-finished", (e) => {
   setBusy(false, false);
   if (ok) {
     logLine("info", `— ${verb} finished —`);
-    setStatus(`${verb.toLowerCase()} ok`, "ok");
   } else {
-    logLine("info", `— ${verb} failed (exit ${e.payload.code}) —`);
-    setStatus(`${verb.toLowerCase()} failed`, "err");
+    logLine("error", `— ${verb} failed (exit ${e.payload.code}) —`);
+    if (e.payload.task === "flash") {
+      logLine(
+        "info",
+        "Tip: reseat the USB cable; if the port is stuck/busy, use File ▸ Reset connection and try again.",
+      );
+    }
   }
 });
 
 // ---- actions ---------------------------------------------------------------
 async function verify() {
   if (busy) return;
+  const bin = currentBin();
+  if (bin === undefined) {
+    logLine("info", "Open src/main.rs or a sketch under src/bin/ to Verify it.");
+    return;
+  }
   clearConsole();
   setBusy(true);
-  setStatus("compiling…", "busy");
-  logLine("info", "Building (cargo build --release)…");
+  const target = bin || "main";
+  const binArg = bin ? ` --bin ${bin}` : "";
+  logLine("info", `Building ${target} (cargo build --release${binArg})…`);
   try {
     await saveCurrent();
-    await invoke("build");
+    await invoke("build", { bin });
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
     setBusy(false);
-    setStatus("error", "err");
   }
 }
 
 async function upload() {
   if (busy) return;
+  const bin = currentBin();
+  if (bin === undefined) {
+    logLine("info", "Open src/main.rs or a sketch under src/bin/ to Upload it.");
+    return;
+  }
+  if (!detectedPort) {
+    logLine("info", "No Arduino Uno detected — plug one in to upload.");
+    return;
+  }
   clearConsole();
   setBusy(true, true);
-  setStatus("uploading…", "busy");
-  logLine("info", "Compiling & flashing (cargo run --release)…");
+  const target = bin || "main";
+  const binArg = bin ? ` --bin ${bin}` : "";
+  logLine("info", `Compiling & flashing ${target} to ${detectedPort} (cargo run --release${binArg})…`);
   try {
     await saveCurrent();
-    await invoke("flash");
+    await invoke("flash", { port: detectedPort, bin });
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
     setBusy(false, false);
-    setStatus("error", "err");
   }
 }
 
@@ -167,10 +294,34 @@ async function stopFlash() {
   try {
     await invoke("stop_flash");
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
   }
   setBusy(false, false);
-  setStatus("stopped", "ready");
+}
+
+// Recover a stuck serial port: force-kill any flash/ravedude/avrdude session
+// holding it, then re-detect the board. Use when Upload fails with a busy/stuck
+// port. (Hardware issues like a loose cable still need a reseat.)
+async function resetConnection() {
+  try {
+    await invoke("reset_connection");
+    setBusy(false, false);
+    await pollBoard(); // refresh the board picker right away
+  } catch (err) {
+    logLine("error", String(err));
+  }
+}
+
+async function environmentDoctor() {
+  try {
+    const report = await invoke("environment_doctor");
+    showDoctorDialog(report);
+    const errors = report.checks.filter((c) => c.status === "error").length;
+    const warnings = report.checks.filter((c) => c.status === "warn").length;
+    logLine("info", `Environment Doctor: ${errors} errors, ${warnings} warnings`);
+  } catch (err) {
+    logLine("error", String(err));
+  }
 }
 
 // Persist the editor buffer to the active file. Used by Ctrl+S and before build/flash.
@@ -179,12 +330,12 @@ async function saveCurrent() {
   await invoke("save_file", { path: currentPath, content: code() });
 }
 async function save() {
+  if (!currentPath) return;
   try {
     await saveCurrent();
-    setStatus("saved", "ok");
+    setDirty(false); // the dot clearing is the "saved" feedback
   } catch (err) {
-    logLine("stderr", String(err));
-    setStatus("save failed", "err");
+    logLine("error", String(err));
   }
 }
 
@@ -202,10 +353,14 @@ btnStop.addEventListener("click", stopFlash);
 $("btn-simulator").addEventListener("click", () => ($("simulator").hidden = false));
 $("btn-close-sim").addEventListener("click", () => ($("simulator").hidden = true));
 
+// ".ino → .rs" guide overlay
+$("btn-guide").addEventListener("click", () => ($("guide").hidden = false));
+$("btn-close-guide").addEventListener("click", () => ($("guide").hidden = true));
+
 $("btn-clear").addEventListener("click", clearConsole);
 $("btn-toggle-console").addEventListener("click", () => {
+  // The chevron rotation is driven by the `.collapsed` class in CSS, not text.
   const collapsed = consoleWrap.classList.toggle("collapsed");
-  $("btn-toggle-console").textContent = collapsed ? "▴" : "▾";
   const docEl = document.documentElement;
   if (collapsed) {
     lastConsoleH = getComputedStyle(docEl).getPropertyValue("--console-h").trim() || lastConsoleH;
@@ -216,17 +371,44 @@ $("btn-toggle-console").addEventListener("click", () => {
   cm.refresh();
 });
 
-// Menu actions
-document.querySelectorAll(".menu-items button").forEach((b) => {
+// ---- console input (terminal-style) ----------------------------------------
+// A typed line is echoed and forwarded to the running flash/ravedude session,
+// which relays it to the board over serial. No-op (with a hint) when idle.
+$("console-input-row").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = $("console-input");
+  const line = input.value;
+  if (!line) return;
+  input.value = "";
+  logLine("stdout", "› " + line);
+  try {
+    await invoke("send_input", { line });
+  } catch (err) {
+    logLine("info", String(err));
+  }
+});
+
+// Menu actions (only the File/Edit top-level items; submenu handled below).
+document.querySelectorAll(".menu-items > button").forEach((b) => {
   b.addEventListener("click", () => {
     const action = b.dataset.action;
     if (action === "save") save();
-    else if (action === "new") setCode(STARTER);
+    else if (action === "new") newSketch();
+    else if (action === "open") openFolder();
+    else if (action === "reset") resetConnection();
+    else if (action === "doctor") environmentDoctor();
     else if (action === "undo") cm.undo();
     else if (action === "redo") cm.redo();
     b.closest(".menu")?.classList.remove("open");
   });
 });
+
+// File ▸ Examples ▸ … — drop a shipped example into the active project and open it.
+document.querySelectorAll("[data-example]").forEach((b) => {
+  b.addEventListener("click", () => openExample(b.dataset.example));
+});
+// Clicking the "Examples" label shouldn't close the File menu (it's hover-driven).
+document.querySelector(".submenu-label")?.addEventListener("click", (e) => e.stopPropagation());
 document.querySelectorAll(".menu").forEach((m) => {
   m.querySelector(".menu-label").addEventListener("click", (ev) => {
     ev.stopPropagation();
@@ -287,16 +469,48 @@ makeDrag($("rz-console"), (e) => {
   localStorage.setItem("consoleH", String(h));
   lastConsoleH = h + "px";
   consoleWrap.classList.remove("collapsed");
-  $("btn-toggle-console").textContent = "▾";
   cm.refresh();
 });
 
 // ---- file browser (VS Code-like explorer) ----------------------------------
-let firmwareRoot = null; // canonical firmware/ path (set at boot)
-let currentPath = null; // file currently open in the editor
 let activeRow = null; // row of the open file (white highlight)
 let selectedRow = null; // row with selection/keyboard focus
 let clipboard = null; // { path, name, isDir, mode: "copy" | "cut" }
+let dirty = false; // unsaved edits in the open file?
+
+function setProjectActionsEnabled(enabled) {
+  for (const button of projectActionButtons) button.disabled = !enabled;
+}
+
+function showNoProject() {
+  localStorage.removeItem("projectRoot");
+  firmwareRoot = null;
+  currentPath = null;
+  activeRow = null;
+  selectedRow = null;
+  clipboard = null;
+  setDirty(false);
+  setCode("");
+  cm.setOption("mode", "rust");
+  cm.refresh();
+  if (sidebarTitle) {
+    sidebarTitle.textContent = "No project";
+    sidebarTitle.title = "No project open";
+  }
+  treeEl.innerHTML = '<div class="empty-project">Open folder or create new sketch</div>';
+  setProjectActionsEnabled(false);
+  updateRunButtons();
+}
+
+// Toggle the unsaved indicator (a white dot) on the open file's row.
+function setDirty(on) {
+  dirty = on;
+  if (activeRow) activeRow.classList.toggle("dirty", on);
+}
+// User edits (but not our own setCode) mark the open file unsaved.
+cm.on("change", () => {
+  if (!programmatic && currentPath) setDirty(true);
+});
 
 // path helpers (firmwareRoot is an absolute, forward-slash path)
 const sep = "/";
@@ -306,11 +520,6 @@ const joinPath = (dir, name) => dir + sep + name;
 const relPath = (p) =>
   p.startsWith(firmwareRoot + sep) ? p.slice(firmwareRoot.length + 1) : basename(p);
 
-function iconFor(entry, open) {
-  if (entry.is_dir) return open ? "📂" : "📁";
-  if (entry.name.endsWith(".rs")) return "🦀";
-  return "📄";
-}
 function modeFor(name) {
   return name.endsWith(".rs") ? "rust" : null; // CM5 falls back to plain text
 }
@@ -327,13 +536,13 @@ async function openFile(path, name, row) {
     cm.setOption("mode", modeFor(name));
     cm.refresh();
     currentPath = path;
-    if (activeRow) activeRow.classList.remove("active");
+    updateRunButtons(); // the open file decides which bin Verify/Upload target
+    if (activeRow) activeRow.classList.remove("active", "dirty");
     activeRow = row;
     if (row) row.classList.add("active");
-    setStatus(name, "ready");
+    setDirty(false); // a freshly loaded buffer is clean
   } catch (err) {
-    logLine("stderr", String(err));
-    setStatus("open failed", "err");
+    logLine("error", String(err));
   }
 }
 
@@ -342,6 +551,8 @@ async function openFile(path, name, row) {
 function makeRow(entry, depth) {
   const row = document.createElement("div");
   row.className = "file-item";
+  if (entry.is_dir) row.classList.add("dir");
+  else if (entry.name.endsWith(".rs")) row.classList.add("rs");
   row.dataset.path = entry.path;
   row.tabIndex = 0;
   row.style.paddingLeft = depth * 14 + 6 + "px";
@@ -349,14 +560,16 @@ function makeRow(entry, depth) {
   row._depth = depth;
   const tw = document.createElement("span");
   tw.className = "file-tw";
-  tw.textContent = entry.is_dir ? "▸" : "";
+  if (entry.is_dir) setIcon(tw, "chevron");
   const ic = document.createElement("span");
   ic.className = "file-ic";
-  ic.textContent = iconFor(entry, false);
+  setIcon(ic, entry.is_dir ? "folder" : "file");
   const label = document.createElement("span");
   label.className = "file-label";
   label.textContent = entry.name;
-  row.append(tw, ic, label);
+  const dot = document.createElement("span");
+  dot.className = "file-dot";
+  row.append(tw, ic, label, dot);
   row._tw = tw;
   row._ic = ic;
   row._label = label;
@@ -395,8 +608,7 @@ function makeDirNode(entry, depth) {
   }
   async function setOpen(want) {
     open = want;
-    row._tw.textContent = open ? "▾" : "▸";
-    row._ic.textContent = iconFor(entry, open);
+    row._tw.classList.toggle("open", open);
     children.hidden = !open;
     if (open) {
       if (!loaded) {
@@ -433,6 +645,7 @@ function restoreHighlights() {
     if (r) {
       activeRow = r;
       r.classList.add("active");
+      if (dirty) r.classList.add("dirty");
     }
   }
   if (selectedRow) {
@@ -447,6 +660,7 @@ function restoreHighlights() {
 // Re-list a single directory in place (the only view that needs to change after
 // an operation or external edit). Nested expanded folders collapse — acceptable.
 async function refreshDir(dirPath) {
+  if (!firmwareRoot || !dirPath) return;
   try {
     if (dirPath === firmwareRoot) {
       await listInto(treeEl, firmwareRoot, 0);
@@ -488,7 +702,7 @@ async function revealEntry(path) {
   try {
     await invoke("reveal", { path });
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
   }
 }
 function setClipboard(entry, mode) {
@@ -529,7 +743,7 @@ async function paste(targetDir) {
     }
     await refreshDir(targetDir);
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
   }
 }
 
@@ -540,11 +754,12 @@ async function duplicate(entry) {
     await invoke("copy_entry", { from: entry.path, to: dest });
     await refreshDir(dir);
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
   }
 }
 
 async function moveInto(srcPath, destDir) {
+  if (!firmwareRoot) return;
   if (!srcPath || srcPath === destDir) return;
   if (destDir.startsWith(srcPath + sep)) return; // can't move into own subtree
   if (parentDir(srcPath) === destDir) return; // already there
@@ -554,7 +769,7 @@ async function moveInto(srcPath, destDir) {
     await refreshDir(parentDir(srcPath));
     await refreshDir(destDir);
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
   }
 }
 
@@ -565,7 +780,7 @@ async function deleteEntry(entry) {
     await invoke("delete_entry", { path: entry.path });
     await refreshDir(parentDir(entry.path));
   } catch (err) {
-    logLine("stderr", String(err));
+    logLine("error", String(err));
   }
 }
 
@@ -592,7 +807,7 @@ function inlineRename(row) {
         await invoke("rename_entry", { from: entry.path, to: joinPath(parentDir(entry.path), name) });
         await refreshDir(parentDir(entry.path));
       } catch (err) {
-        logLine("stderr", String(err));
+        logLine("error", String(err));
       }
     }
   }
@@ -610,6 +825,7 @@ function inlineRename(row) {
 }
 
 async function inlineCreate(dirPath, isDir) {
+  if (!firmwareRoot || !dirPath) return;
   let container;
   let depth;
   if (dirPath === firmwareRoot) {
@@ -629,7 +845,7 @@ async function inlineCreate(dirPath, isDir) {
   tw.className = "file-tw";
   const ic = document.createElement("span");
   ic.className = "file-ic";
-  ic.textContent = isDir ? "📁" : "📄";
+  setIcon(ic, isDir ? "folder" : "file");
   const input = document.createElement("input");
   input.className = "file-input";
   input.placeholder = isDir ? "folder name" : "file name";
@@ -653,7 +869,7 @@ async function inlineCreate(dirPath, isDir) {
         openFile(path, name, r);
       }
     } catch (err) {
-      logLine("stderr", String(err));
+      logLine("error", String(err));
     }
   }
   input.addEventListener("keydown", (e) => {
@@ -704,6 +920,113 @@ function confirmDialog(message) {
     document.body.append(overlay);
     yes.focus();
   });
+}
+
+// Ask for a single line of text (used to name a new sketch). Resolves to the
+// trimmed value, or null if cancelled.
+function promptDialog(message, initial = "") {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    const p = document.createElement("p");
+    p.textContent = message;
+    const input = document.createElement("input");
+    input.className = "file-input";
+    input.value = initial;
+    input.style.width = "100%";
+    input.style.marginBottom = "18px";
+    const btns = document.createElement("div");
+    btns.className = "modal-btns";
+    const no = document.createElement("button");
+    no.className = "btn btn-ghost";
+    no.textContent = "Cancel";
+    const yes = document.createElement("button");
+    yes.className = "btn btn-primary";
+    yes.textContent = "Create";
+    btns.append(no, yes);
+    modal.append(p, input, btns);
+    overlay.append(modal);
+    const close = (v) => {
+      overlay.remove();
+      resolve(v);
+    };
+    yes.addEventListener("click", () => close(input.value.trim()));
+    no.addEventListener("click", () => close(null));
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close(null);
+    });
+    input.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        close(input.value.trim());
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        close(null);
+      }
+    });
+    document.body.append(overlay);
+    input.focus();
+    input.select();
+  });
+}
+
+function showDoctorDialog(report) {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const modal = document.createElement("div");
+  modal.className = "modal doctor-modal";
+  const title = document.createElement("div");
+  title.className = "doctor-title";
+  title.textContent = "Environment Doctor";
+  const list = document.createElement("div");
+  list.className = "doctor-list";
+
+  for (const check of report.checks) {
+    const row = document.createElement("div");
+    row.className = `doctor-row doctor-${check.status}`;
+    const status = document.createElement("span");
+    status.className = "doctor-status";
+    status.textContent = check.status.toUpperCase();
+    const body = document.createElement("div");
+    body.className = "doctor-body";
+    const name = document.createElement("div");
+    name.className = "doctor-name";
+    name.textContent = check.name;
+    const detail = document.createElement("div");
+    detail.className = "doctor-detail";
+    detail.textContent = check.detail;
+    body.append(name, detail);
+    if (check.fix) {
+      const fix = document.createElement("div");
+      fix.className = "doctor-fix";
+      fix.textContent = check.fix;
+      body.append(fix);
+    }
+    row.append(status, body);
+    list.append(row);
+  }
+
+  const btns = document.createElement("div");
+  btns.className = "modal-btns";
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "btn btn-primary";
+  closeBtn.textContent = "Close";
+  btns.append(closeBtn);
+  modal.append(title, list, btns);
+  overlay.append(modal);
+  const close = () => overlay.remove();
+  closeBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+  document.body.append(overlay);
+  closeBtn.focus();
 }
 
 // ---- context menu ----------------------------------------------------------
@@ -776,6 +1099,12 @@ function menuForEntry(entry) {
 }
 
 function menuForBackground() {
+  if (!firmwareRoot) {
+    return [
+      { label: "New sketch", action: newSketch },
+      { label: "Open folder", action: openFolder },
+    ];
+  }
   return [
     { label: "New File", action: () => inlineCreate(firmwareRoot, false) },
     { label: "New Folder", action: () => inlineCreate(firmwareRoot, true) },
@@ -836,40 +1165,121 @@ treeEl.addEventListener("contextmenu", (e) => {
   showMenu(e.clientX, e.clientY, menuForBackground());
 });
 treeEl.addEventListener("dragover", (e) => {
+  if (!firmwareRoot) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
 });
 treeEl.addEventListener("drop", (e) => {
+  if (!firmwareRoot) return;
   e.preventDefault();
   moveInto(e.dataTransfer.getData("text/path"), firmwareRoot);
 });
 
 // sidebar header action buttons
-$("act-new-file").addEventListener("click", () => inlineCreate(firmwareRoot, false));
-$("act-new-folder").addEventListener("click", () => inlineCreate(firmwareRoot, true));
-$("act-refresh").addEventListener("click", () => refreshDir(firmwareRoot));
+$("act-new-file").addEventListener("click", () => firmwareRoot && inlineCreate(firmwareRoot, false));
+$("act-new-folder").addEventListener("click", () => firmwareRoot && inlineCreate(firmwareRoot, true));
+$("act-refresh").addEventListener("click", () => firmwareRoot && refreshDir(firmwareRoot));
 $("act-collapse").addEventListener("click", collapseAll);
 
-// ---- boot: render firmware/ tree and open src/main.rs ----------------------
-(async () => {
+// ---- project switching -----------------------------------------------------
+// Render a project's tree and open src/main.rs when present; bundled example
+// projects fall back to src/bin/blink.rs. Shared by boot, File ▸ New sketch,
+// and (future) Open project.
+async function loadProject(root) {
+  firmwareRoot = root;
+  setProjectActionsEnabled(true);
+  if (sidebarTitle) {
+    sidebarTitle.textContent = basename(root);
+    sidebarTitle.title = root;
+  }
+  currentPath = null;
+  activeRow = null;
+  setDirty(false);
+  updateRunButtons();
+  await listInto(treeEl, firmwareRoot, 0);
+  invoke("watch_dir", { path: firmwareRoot }).catch(() => {});
+  // Expand src/ first so main.rs, or the bin folder fallback, is visible.
+  const srcRow = findRow(firmwareRoot + "/src");
+  if (srcRow && srcRow._setOpen) await srcRow._setOpen(true);
+  const mainPath = firmwareRoot + "/src/main.rs";
+  const mainRow = findRow(mainPath);
+  if (mainRow) {
+    select(mainRow);
+    await openFile(mainPath, "main.rs", mainRow);
+    return;
+  }
+  const binRow = findRow(firmwareRoot + "/src/bin");
+  if (binRow && binRow._setOpen) await binRow._setOpen(true);
+  const blinkPath = firmwareRoot + "/src/bin/blink.rs";
+  const blinkRow = findRow(blinkPath);
+  if (blinkRow) {
+    select(blinkRow);
+    await openFile(blinkPath, "blink.rs", blinkRow);
+  }
+}
+
+// File ▸ New sketch: pick a parent folder, name the project, scaffold it, switch.
+async function newSketch() {
+  let parent;
   try {
-    firmwareRoot = await invoke("firmware_root");
-    await listInto(treeEl, firmwareRoot, 0);
-    invoke("watch_dir", { path: firmwareRoot }).catch(() => {});
-    // Expand src/ and open main.rs so the IDE opens on the sketch as before.
+    parent = await invoke("pick_folder");
+  } catch (err) {
+    logLine("error", String(err));
+    return;
+  }
+  if (!parent) return; // cancelled
+  const name = await promptDialog("New sketch name", "firmware_2");
+  if (!name) return;
+  try {
+    const root = await invoke("new_project", { parent, name });
+    await loadProject(root);
+    logLine("info", `New sketch created at ${root}`);
+  } catch (err) {
+    logLine("error", String(err));
+  }
+}
+
+// File ▸ Open folder: pick an existing Cargo/CrabDuino project and switch to it.
+async function openFolder() {
+  let folder;
+  try {
+    folder = await invoke("pick_folder");
+  } catch (err) {
+    logLine("error", String(err));
+    return;
+  }
+  if (!folder) return; // cancelled
+  try {
+    const root = await invoke("set_project", { path: folder });
+    await loadProject(root);
+    logLine("info", `Opened folder ${root}`);
+  } catch (err) {
+    logLine("error", String(err));
+  }
+}
+
+// File ▸ Examples ▸ …: copy a shipped example into the active project, open it.
+async function openExample(name) {
+  document.querySelectorAll(".menu").forEach((m) => m.classList.remove("open"));
+  if (!firmwareRoot) {
+    logLine("info", "Open a folder or create a new sketch before adding examples.");
+    return;
+  }
+  try {
+    const path = await invoke("add_example", { name });
+    // Make sure src/bin is expanded so the new file shows and can be highlighted.
     const srcRow = findRow(firmwareRoot + "/src");
     if (srcRow && srcRow._setOpen) await srcRow._setOpen(true);
-    const mainPath = firmwareRoot + "/src/main.rs";
-    const mainRow = findRow(mainPath);
-    if (mainRow) {
-      select(mainRow);
-      openFile(mainPath, "main.rs", mainRow);
-    } else {
-      await openFile(mainPath, "main.rs", null);
-    }
-    setStatus("ready");
+    const binRow = findRow(firmwareRoot + "/src/bin");
+    if (binRow && binRow._setOpen) await binRow._setOpen(true);
+    await refreshDir(firmwareRoot + "/src/bin");
+    const row = findRow(path);
+    if (row) select(row);
+    await openFile(path, name + ".rs", row);
   } catch (err) {
-    logLine("stderr", String(err));
-    setStatus("using template", "ready"); // keep starter if firmware not found
+    logLine("error", String(err));
   }
-})();
+}
+
+// ---- boot: start with no folder open ---------------------------------------
+showNoProject();

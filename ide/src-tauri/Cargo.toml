@@ -20,8 +20,13 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"   # native folder picker for File ▸ New sketch
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 trash = "5"            # move-to-trash deletes (recoverable, like VS Code)
 notify = "6"           # watch expanded folders for external file changes
+serialport = "4"       # enumerate USB serial ports to detect a connected Uno
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"           # kill the whole flash process group (ravedude + avrdude)
 

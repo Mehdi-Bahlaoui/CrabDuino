@@ -19,7 +19,21 @@
           <button class="menu-label">File</button>
           <div class="menu-items">
             <button data-action="new">New sketch</button>
+            <button data-action="open">Open folder</button>
+            <div class="submenu">
+              <button class="submenu-label">
+                Examples <span class="submenu-caret" data-icon="chevron"></span>
+              </button>
+              <div class="submenu-items">
+                <button data-example="blink">Blink</button>
+                <button data-example="button">Button</button>
+                <button data-example="analog_read">Analog Read</button>
+                <button data-example="fade">Fade</button>
+              </div>
+            </div>
             <button data-action="save">Save <span class="kbd">Ctrl+S</span></button>
+            <button data-action="reset">Reset connection</button>
+            <button data-action="doctor">Environment Doctor</button>
           </div>
         </div>
         <div class="menu" data-menu="edit">
@@ -41,36 +55,39 @@
 
       <!-- Toolbar -->
       <div class="toolbar">
-        <button id="btn-verify" class="btn"><span class="ic">✓</span> Verify</button>
-        <button id="btn-upload" class="btn btn-primary"><span class="ic">→</span> Upload</button>
-        <button id="btn-stop" class="btn btn-stop" hidden><span class="ic">■</span> Stop</button>
+        <button id="btn-verify" class="btn"><span class="ic" data-icon="check"></span> Verify</button>
+        <button id="btn-upload" class="btn btn-primary"><span class="ic" data-icon="upload"></span> Upload</button>
+        <button id="btn-stop" class="btn btn-stop" hidden><span class="ic" data-icon="stop"></span> Stop</button>
         <button id="btn-simulator" class="btn btn-ghost">View Simulator</button>
         <label class="board-picker">
           <span class="board-picker-label">Board</span>
-          <select id="board-select" class="board-select">
-            <option value="uno">Arduino Uno</option>
+          <select id="board-select" class="board-select" disabled>
+            <option value="">No board detected</option>
           </select>
         </label>
         <div class="toolbar-spacer"></div>
-        <span id="status" class="status">ready</span>
+        <button id="btn-guide" class="btn btn-ghost">
+          <span class="ic" data-icon="guide"></span> .ino &rarr; .rs Guide
+        </button>
       </div>
 
       <!-- Sidebar: file browser -->
       <aside class="sidebar">
         <div class="sidebar-head">
-          <span class="sidebar-title">FIRMWARE</span>
+          <span class="sidebar-root-icon" data-icon="folder"></span>
+          <span id="sidebar-title" class="sidebar-title">Project</span>
           <div class="sidebar-actions">
-            <button id="act-new-file" class="ic-btn" title="New File">🗋</button>
-            <button id="act-new-folder" class="ic-btn" title="New Folder">🗀</button>
-            <button id="act-refresh" class="ic-btn" title="Refresh">⟳</button>
-            <button id="act-collapse" class="ic-btn" title="Collapse Folders">⊟</button>
+            <button id="act-new-file" class="ic-btn" data-icon="newFile" title="New File"></button>
+            <button id="act-new-folder" class="ic-btn" data-icon="newFolder" title="New Folder"></button>
+            <button id="act-refresh" class="ic-btn" data-icon="refresh" title="Refresh"></button>
+            <button id="act-collapse" class="ic-btn" data-icon="collapse" title="Collapse Folders"></button>
           </div>
         </div>
         <div id="file-tree" class="file-tree"></div>
         <div class="resizer resizer-v" id="rz-sidebar" title="Drag to resize"></div>
       </aside>
 
-      <!-- Main: editor + (overlay) simulator -->
+      <!-- Main: editor + (overlay) simulator + (overlay) guide -->
       <main class="main">
         <textarea id="editor"></textarea>
         <div id="simulator" class="simulator" hidden>
@@ -79,6 +96,177 @@
             <p>The board simulator isn't wired up yet.</p>
             <p class="muted">Build &amp; flash to a real Uno with Verify / Upload.</p>
             <button id="btn-close-sim" class="btn btn-ghost">Back to editor</button>
+          </div>
+        </div>
+
+        <!-- ".ino → .rs" guide: read-only reference shown over the editor -->
+        <div id="guide" class="guide-overlay" hidden>
+          <div class="guide-head">
+            <span class="guide-title">.ino &rarr; .rs &mdash; translating Arduino C to Rust</span>
+            <button id="btn-close-guide" class="btn btn-ghost btn-mini">Back to editor</button>
+          </div>
+          <div class="guide-body">
+            <p class="guide-lead">
+              In Arduino C++ you fill in <code>setup()</code> and <code>loop()</code>.
+              In Rust you write a single <code>main</code> that never returns: the code
+              before the loop is your setup, and a bare <code>loop {}</code> is your loop.
+              The real shift is <strong>ownership</strong> &mdash; you take the chip's
+              peripherals once, and the compiler guarantees nothing else touches them, so a
+              whole class of Arduino bugs simply can't compile.
+            </p>
+
+            <h3>1 &middot; setup() / loop() &rarr; fn main() -&gt; !</h3>
+            <p>One function does both jobs. <code>-&gt; !</code> means "never returns" &mdash;
+              there's no operating system to return to.</p>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">void setup() {
+  // runs once
+}
+
+void loop() {
+  // runs forever
+}</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">#![no_std]              // no operating system / std library
+#![no_main]             // we provide the entry point
+use panic_halt as _;    // on panic: just stop
+
+#[arduino_hal::entry]
+fn main() -&gt; ! {
+    let dp = arduino_hal::Peripherals::take().unwrap();
+    let pins = arduino_hal::pins!(dp);
+
+    // ---- setup: runs once ----
+
+    loop {
+        // ---- loop: runs forever ----
+    }
+}</pre>
+            </div>
+            <p><code>Peripherals::take()</code> hands you the chip's hardware <em>once</em>
+              (it returns an <code>Option</code>, so a second take is <code>None</code>).
+              <code>pins!</code> splits that into named pins you move into the parts of your
+              program that own them.</p>
+
+            <h3>2 &middot; pinMode(OUTPUT) + digitalWrite</h3>
+            <p>A pin's mode <em>is its type</em>. You can't write to a pin you didn't turn
+              into an output &mdash; it won't compile.</p>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">pinMode(13, OUTPUT);
+digitalWrite(13, HIGH);
+digitalWrite(13, LOW);</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">let mut led = pins.d13.into_output();
+led.set_high();
+led.set_low();
+led.toggle();</pre>
+            </div>
+
+            <h3>3 &middot; delay()</h3>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">delay(1000);        // milliseconds
+delayMicroseconds(50);</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">arduino_hal::delay_ms(1000);
+arduino_hal::delay_us(50);</pre>
+            </div>
+
+            <h3>4 &middot; pinMode(INPUT_PULLUP) + digitalRead</h3>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">pinMode(2, INPUT_PULLUP);
+if (digitalRead(2) == LOW) {
+  // button pressed
+}</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">let button = pins.d2.into_pull_up_input();
+if button.is_low() {
+    // button pressed
+}
+// pins.d2.into_floating_input() for a plain input</pre>
+            </div>
+
+            <h3>5 &middot; Serial.begin / Serial.print</h3>
+            <p><code>ufmt</code> is a tiny, heap-free formatter for microcontrollers.
+              <code>uwriteln!</code> is <code>println</code>; <code>uwrite!</code> is
+              <code>print</code>. <code>unwrap_infallible()</code> just says "writing to the
+              UART can't fail".</p>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">Serial.begin(57600);
+Serial.println("Hello!");
+Serial.print(value);</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">use arduino_hal::prelude::*;
+
+let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
+ufmt::uwriteln!(&amp;mut serial, "Hello!").unwrap_infallible();
+ufmt::uwrite!(&amp;mut serial, "{}", value).unwrap_infallible();</pre>
+            </div>
+
+            <h3>6 &middot; Serial.read</h3>
+            <p>You can type into CrabDuino's <strong>Output</strong> panel while a sketch is
+              running &mdash; it arrives here over serial.</p>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">if (Serial.available()) {
+  char c = Serial.read();
+}</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">// nb::block! waits until a byte is available
+let b = nb::block!(serial.read()).unwrap_infallible();</pre>
+            </div>
+
+            <h3>7 &middot; analogRead</h3>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">int v = analogRead(A0);   // 0–1023</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">let mut adc = arduino_hal::Adc::new(dp.ADC, Default::default());
+let a0 = pins.a0.into_analog_input(&amp;mut adc);
+let v = a0.analog_read(&amp;mut adc);   // 0–1023</pre>
+            </div>
+
+            <h3>8 &middot; analogWrite (PWM)</h3>
+            <p>PWM lives in <code>simple_pwm</code>: pick a timer, turn an output pin into a
+              PWM pin, then set the duty 0–255.</p>
+            <div class="snippet">
+              <div class="lang">Arduino (C++)</div>
+              <pre class="code">analogWrite(5, 128);   // 0–255 duty</pre>
+            </div>
+            <div class="snippet">
+              <div class="lang rust">Rust</div>
+              <pre class="code">use arduino_hal::simple_pwm::*;
+
+let timer0 = Timer0Pwm::new(dp.TC0, Prescaler::Prescale64);
+let mut led = pins.d5.into_output().into_pwm(&amp;timer0);
+led.enable();
+led.set_duty(128);   // 0–255</pre>
+            </div>
+
+            <p class="guide-outro">
+              That's the whole vocabulary. Press <strong>Verify</strong> to compile the open
+              sketch and <strong>Upload</strong> to flash it to a connected Uno. Want a
+              running start? <strong>File &rarr; Examples</strong> drops Blink, Button,
+              Analog Read, or Fade straight into your project.
+            </p>
           </div>
         </div>
       </main>
@@ -90,9 +278,20 @@
           <span class="console-title">Output</span>
           <div class="toolbar-spacer"></div>
           <button id="btn-clear" class="btn btn-mini">Clear</button>
-          <button id="btn-toggle-console" class="btn btn-mini">▾</button>
+          <button id="btn-toggle-console" class="btn btn-mini console-toggle" title="Collapse" data-icon="chevron"></button>
         </div>
         <pre id="console" class="console-body"></pre>
+        <form id="console-input-row" class="console-input-row">
+          <span class="console-prompt">&rsaquo;</span>
+          <input
+            id="console-input"
+            class="console-input"
+            type="text"
+            placeholder="Type to send to the board…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </form>
       </section>
     </div>
 

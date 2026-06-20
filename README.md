@@ -1,51 +1,37 @@
-# CrabDuino
+# CrabDuino 🦀
 
-A consumer IDE that lets you program Arduino using Rust.
+A desktop IDE for programming the **Arduino Uno in Rust**.
+
+You write Rust against [`arduino-hal`](https://github.com/rahix/avr-hal) directly —
+there is **no `.ino` file and no C++ translation**. CrabDuino edits a real Rust
+project, then builds and flashes it to a connected board with one click.
+
+It's a [Tauri v2](https://tauri.app) app: a small Rust backend plus a buildless
+HTML/CSS/JS frontend (no npm, no Node, no bundler).
+
+> Working on CrabDuino itself? See **[DEVELOPER.md](DEVELOPER.md)** for how the
+> build pipeline and backend actually work. This file is just how to run it.
 
 ---
 
-## Layout
+## Prerequisites
 
+**To launch the IDE window** you need a Rust toolchain and the Tauri CLI:
+
+```bash
+# Rust (if you don't have it): https://rustup.rs
+cargo install tauri-cli --version "^2"   # provides the `cargo tauri` command
 ```
-.
-├── README.md            ← you are here (single source of truth)
-├── blink.ino            ← reference input: a stock Arduino C++ sketch
-├── blink.hex            ← reference output: compiled AVR firmware
-└── firmware/            ← barebones Rust project. Target: Arduino Uno (atmega328p)
-    ├── Cargo.toml
-    ├── Ravedude.toml    ← controls flashing + serial console behavior
-    ├── rust-toolchain.toml
-    ├── .cargo/config.toml
-    ├── .gitignore
-    ├── LICENSE-APACHE   ← upstream license (code in src/main.rs is derived from avr-hal-template)
-    ├── LICENSE-MIT
-    └── src/main.rs      ← the file the IDE will overwrite per sketch
+
+On Linux, building the app also needs libudev (for USB board detection):
+
+```bash
+sudo apt install libudev-dev        # Debian/Ubuntu
 ```
 
-`firmware/` started life as a clone of [Rahix/avr-hal-template](https://github.com/Rahix/avr-hal-template) but all the `cargo-generate` templating (Liquid `{% case board %}` blocks, the post-hook script, the README template, the embedded `.git`) has been stripped out. It is now a plain, ready-to-build Rust project that compiles unmodified — no `cargo generate` step required.
-
----
-
-## How the firmware project compiles
-
-Four files together describe the build. They are all hardcoded for Uno. If you ever retarget another board, every one of them needs a matching change:
-
-| File | What it controls | Uno value |
-| --- | --- | --- |
-| `firmware/Cargo.toml` | `arduino-hal` feature flag selecting the board's HAL | `features = ["arduino-uno"]` |
-| `firmware/.cargo/config.toml` | LLVM `target-cpu` rustflag (the build target is always `avr-none`; only the CPU varies) | `target-cpu=atmega328p` |
-| `firmware/Ravedude.toml` | `ravedude` board id, serial baud, auto-console behavior | `board = "uno"`, `57600` baud |
-| `firmware/src/main.rs` | LED pin (and any board-specific peripheral wiring) | `pins.d13` |
-
-The toolchain is pinned in `firmware/rust-toolchain.toml` to **`nightly-2025-04-27`** with the `rust-src` component. AVR support requires `-Zbuild-std=core` (set via `[unstable] build-std = ["core"]` in `.cargo/config.toml`), which is only available on nightly with `rust-src` present.
-
-Profiles in `Cargo.toml` are tuned for tiny program memory (`lto = true`, `opt-level = "s"`, `panic = "abort"`, `codegen-units = 1` on release). Don't change these casually — AVRs have ~32 KB of flash and these settings are the difference between fitting and not fitting.
-
----
-
-## Prerequisites (one-time, host machine)
-
-You need an AVR toolchain on the host plus `ravedude` for flashing. On Ubuntu/Debian:
+**To actually Verify (build) or Upload (flash)** a sketch, you also need the AVR
+toolchain on your machine, because those shell out to cargo + ravedude. On
+Ubuntu/Debian:
 
 ```bash
 sudo apt install gcc-avr avr-libc avrdude
@@ -53,90 +39,76 @@ cargo install ravedude
 rustup component add rust-src --toolchain nightly-2025-04-27
 ```
 
-The `nightly-2025-04-27` toolchain itself will be installed automatically by `rustup` the first time you `cargo build` inside `firmware/`, because `rust-toolchain.toml` requests it.
+The pinned `nightly-2025-04-27` toolchain installs itself automatically the first
+time the firmware project builds (it's requested by `firmware/rust-toolchain.toml`).
 
 ---
 
-## One-command workflows
-
-All commands run **from inside `firmware/`**.
-
-### Build only (produces ELF; no board needed)
+## Run
 
 ```bash
-cargo build --release
+cd ide
+cargo tauri dev
 ```
 
-Output: `firmware/target/avr-none/release/firmware.elf`.
+This opens the CrabDuino window with hot-reload of the Rust backend. The frontend
+is static files served from `ide/ui/` — edit them and refresh.
 
-### Build + flash + open serial console (board must be connected)
+### Build a distributable app
 
 ```bash
-cargo run --release
+cd ide
+cargo tauri build
 ```
 
-`cargo run` works because `.cargo/config.toml` sets `runner = "ravedude"` for `cfg(target_arch = "avr")`. Ravedude reads `Ravedude.toml`, picks up `board = "uno"`, detects the serial port, flashes via `avrdude`, then opens a 57600-baud console attached to stdout/stdin. One command, end to end.
+Bundles (`.deb`/`.AppImage`/`.dmg`/`.msi`, depending on your OS) land in
+`ide/src-tauri/target/release/bundle/`.
 
-If ravedude can't auto-detect the port, override it with the `RAVEDUDE_PORT` env var:
-
-```bash
-RAVEDUDE_PORT=/dev/ttyUSB0 cargo run --release
-```
-
-### Build to a flashable `.hex` (no flashing)
-
-`cargo` produces an ELF; the Arduino bootloader wants Intel HEX. Convert with `avr-objcopy` (shipped with `gcc-avr`):
-
-```bash
-cargo build --release
-avr-objcopy -O ihex -R .eeprom \
-    target/avr-none/release/firmware.elf \
-    firmware.hex
-```
-
-This is the path the IDE will use to produce a `.hex` artifact equivalent to `blink.hex` at the repo root.
+For the consumer Debian/Ubuntu package with CrabDuino's private Rust/AVR build
+stack, use `scripts/package-linux-deb.sh` from the repo root. See
+**[PACKAGING.md](PACKAGING.md)**.
 
 ---
 
-## How the IDE plugs into this
+## Using the app
 
-The IDE's compile pipeline is just:
+| Control          | What it does                                                        |
+| ---------------- | ------------------------------------------------------------------- |
+| **File ▸ New sketch** | Create a new project with the board config and an empty `src/main.rs`. |
+| **File ▸ Open folder** | Switch the IDE to an existing Cargo/CrabDuino project folder.       |
+| **File explorer** | VS Code-style sidebar over the active project. Open a file to edit it. |
+| **Verify**        | `cargo build --release` for `src/main.rs`, or `cargo build --release --bin <name>` for `src/bin/<name>.rs`. |
+| **Upload**        | `cargo run --release` for `src/main.rs`, or `cargo run --release --bin <name>` for `src/bin/<name>.rs`; flashes to the **detected** Uno and opens the console. |
+| **Stop**          | Kill the running flash/console session.                             |
+| **Board**         | Shows your Arduino Uno (and its port) only while it's plugged in and detected. |
+| **Output panel**  | Live cargo/ravedude output streamed from the backend.              |
+| **Ctrl + S**      | Save the active file. `Ctrl +`/`-`/`0` and `Ctrl+scroll` zoom.      |
 
-1. Translate the user's `.ino` source to Rust.
-2. Overwrite `firmware/src/main.rs` with the translation.
-3. Shell out to `cargo build --release` inside `firmware/` (or `cargo run --release` for flash).
-4. Either grab `target/avr-none/release/firmware.elf` and convert to hex, or let ravedude handle flashing directly.
+New sketches start with an empty `src/main.rs`. Example sketches live under
+`src/bin/` (e.g. `blink.rs`, `button.rs`) and build as named binaries.
+Verify/Upload always act on the file currently open in the editor.
 
-Nothing else in `firmware/` should need to change per sketch. Keep `src/main.rs` the only file the IDE writes; everything else (`Cargo.toml`, board configs, toolchain) is invariant for a given target board.
+Typical loop: create or open a project → edit `src/main.rs` or a sketch under
+`src/bin/` → **Verify** to compile → plug in an Uno → **Upload** to flash it
+and watch the serial console.
 
-The `blink.ino` ↔ `firmware/src/main.rs` pair in this repo is the canonical before/after example to validate the translator against. `blink.hex` is the reference output (compiled by the Arduino IDE) for a sanity check that your Rust-produced hex behaves the same on hardware.
+By default CrabDuino edits the `firmware/` directory next to the app. Use
+**File ▸ Open folder** to switch projects from the UI, or point the default at a
+different firmware project with the `CRABDUINO_FIRMWARE` environment variable:
 
----
-
-## Supporting other boards later
-
-This skeleton is Uno-only by design — multi-board flexibility is the IDE's job, not this template's. When you do add another board, you have two choices:
-
-- **Per-board firmware dir** (`firmware-uno/`, `firmware-mega/`, …) — simplest, each dir is fully hardcoded. Recommended for the consumer product because it's the most predictable.
-- **Single dir, IDE rewrites the four files** — the IDE substitutes the four hardcoded values above before invoking cargo. Less disk, more moving parts.
-
-For reference, the relevant values per board can be cribbed from the original templated files (see [avr-hal-template](https://github.com/Rahix/avr-hal-template) upstream). Key mapping:
-
-| Board | `arduino-hal` feature | `target-cpu` | `ravedude` board |
-| --- | --- | --- | --- |
-| Arduino Uno | `arduino-uno` | `atmega328p` | `uno` |
-| Arduino Nano | `arduino-nano` | `atmega328p` | `nano` |
-| Arduino Nano (new bootloader) | `arduino-nano` | `atmega328p` | `nano-new` |
-| Arduino Mega 2560 | `arduino-mega2560` | `atmega2560` | `mega2560` |
-| Arduino Leonardo | `arduino-leonardo` | `atmega32u4` | `leonardo` |
-| Arduino Micro | `arduino-micro` | `atmega32u4` | `micro` |
-| SparkFun ProMicro | `sparkfun-promicro` | `atmega32u4` | `promicro` |
-| Adafruit Trinket | `trinket` | `attiny85` | `trinket` |
-
-Leonardo/Micro/ProMicro emulate the serial console over USB, which `avr-hal` doesn't yet support — set `open-console = false` in `Ravedude.toml` for those.
+```bash
+CRABDUINO_FIRMWARE=/path/to/firmware cargo tauri dev
+```
 
 ---
 
-## License
+## Repo layout
 
-Code under `firmware/src/` and the build config are derived from [Rahix/avr-hal-template](https://github.com/Rahix/avr-hal-template) and remain under MIT OR Apache-2.0 (see `firmware/LICENSE-APACHE` and `firmware/LICENSE-MIT`). The IDE you build around this repo can be licensed however you choose, but the firmware skeleton itself carries upstream attribution.
+```
+.
+├── README.md      ← you are here (how to run the app)
+├── DEVELOPER.md   ← how it works under the hood
+├── ide/           ← the Tauri app (Rust backend + buildless web frontend)
+├── firmware/      ← the Rust skeleton the IDE compiles (target: Arduino Uno)
+└── website/       ← marketing site (static)
+```

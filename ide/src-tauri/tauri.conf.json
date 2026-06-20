@@ -15,7 +15,8 @@
         "height": 720,
         "minWidth": 800,
         "minHeight": 520,
-        "decorations": false
+        "decorations": false,
+        "maximized": true
       }
     ],
     "security": {
@@ -24,7 +25,35 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["deb"],
+    "category": "DeveloperTool",
+    "shortDescription": "Rust IDE for Arduino Uno",
+    "longDescription": "CrabDuino is a desktop IDE for writing, building, and flashing Rust sketches for the Arduino Uno. The Linux package carries CrabDuino's private Rust and AVR build stack so users do not install those tools manually.",
+    "resources": {
+      "package-resources/": ""
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0 | libgtk-3-0t64",
+          "libudev1",
+          "libsoup-3.0-0",
+          "librsvg2-2",
+          "libftdi1",
+          "libusb-0.1-4",
+          "libusb-1.0-0",
+          "libelf1 | libelf1t64",
+          "libhidapi-libusb0",
+          "libreadline8 | libreadline8t64",
+          "libzstd1",
+          "zlib1g",
+          "xdg-utils"
+        ],
+        "section": "devel",
+        "priority": "optional"
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

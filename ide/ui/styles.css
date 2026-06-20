@@ -233,7 +233,12 @@ body {
   cursor: default;
 }
 .btn .ic {
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+.btn .ic svg {
+  width: 1.05em;
+  height: 1.05em;
 }
 .btn-primary {
   background: var(--c-red);
@@ -295,28 +300,6 @@ body {
   border-width: 1px;
   border-radius: 6px;
 }
-.status {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  color: var(--muted);
-}
-.status-busy {
-  color: var(--c-clay);
-  border-color: var(--c-clay);
-}
-.status-ok {
-  color: var(--c-pale);
-  border-color: color-mix(in srgb, var(--c-pale) 60%, var(--c-mauve));
-}
-.status-err {
-  color: var(--c-red);
-  border-color: var(--c-red);
-}
-
 /* ---- sidebar -------------------------------------------------------------- */
 .sidebar {
   grid-area: sidebar;
@@ -333,10 +316,24 @@ body {
   margin: 0 2px 8px;
 }
 .sidebar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 18px;
   letter-spacing: 0.08em;
   font-weight: 700;
   color: var(--accent-2);
+}
+.sidebar-root-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-2);
+}
+.sidebar-root-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.8;
 }
 .sidebar-actions {
   margin-left: auto;
@@ -344,20 +341,39 @@ body {
   gap: 2px;
 }
 .ic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: var(--accent-2);
-  font-size: 13px;
   line-height: 1;
-  padding: 3px 5px;
+  padding: 4px 5px;
   border-radius: 5px;
   cursor: pointer;
+}
+.ic-btn svg {
+  width: 16px;
+  height: 16px;
 }
 .ic-btn:hover {
   background: var(--bg-hover);
 }
+.ic-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ic-btn:disabled:hover {
+  background: transparent;
+}
 .file-tree {
   user-select: none;
+}
+.empty-project {
+  padding: 14px 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 .file-item {
   display: flex;
@@ -380,15 +396,32 @@ body {
 }
 .file-ic {
   flex: none;
-  width: 1.2em;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  color: var(--muted);
 }
-/* twirl-down caret for folders */
+.file-ic svg {
+  width: 16px;
+  height: 16px;
+}
+/* expand/collapse caret for folders (a chevron that rotates when open) */
 .file-tw {
   flex: none;
-  width: 0.9em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
   color: var(--muted);
-  font-size: 10px;
+}
+.file-tw svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.12s ease;
+}
+.file-tw.open svg {
+  transform: rotate(90deg);
 }
 
 /* ---- main / editor -------------------------------------------------------- */
@@ -414,6 +447,10 @@ body {
 .main .CodeMirror.cm-s-github,
 .main .CodeMirror.cm-s-github .CodeMirror-gutters {
   background: var(--bg-deep);
+}
+/* Breathing room between the line-number gutter and the code. */
+.main .CodeMirror-linenumber {
+  padding-right: 24px;
 }
 
 /* ---- simulator overlay ---------------------------------------------------- */
@@ -495,6 +532,9 @@ body {
   white-space: pre-wrap;
 }
 .ln-stderr {
+  color: var(--c-clay);
+}
+.ln-error {
   color: var(--c-red);
 }
 .ln-info {
@@ -553,6 +593,8 @@ body {
   border-radius: 6px;
 }
 .file-label {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 16px;
@@ -634,4 +676,260 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.doctor-modal {
+  width: min(760px, calc(100vw - 40px));
+  max-width: 760px;
+}
+.doctor-title {
+  margin-bottom: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+.doctor-list {
+  max-height: min(58vh, 560px);
+  margin-bottom: 18px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.doctor-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.doctor-row:last-child {
+  border-bottom: 0;
+}
+.doctor-status {
+  align-self: start;
+  padding: 2px 5px;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-pale);
+}
+.doctor-ok .doctor-status {
+  background: var(--bg-active);
+}
+.doctor-warn .doctor-status {
+  background: var(--c-clay);
+}
+.doctor-error .doctor-status {
+  background: var(--c-red);
+}
+.doctor-body {
+  min-width: 0;
+}
+.doctor-name {
+  margin-bottom: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.doctor-detail,
+.doctor-fix {
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.doctor-fix {
+  margin-top: 5px;
+  color: var(--c-clay);
+}
+
+/* ---- inline SVG icons: colors, carets ------------------------------------- */
+.ic svg,
+.submenu-caret svg,
+.console-toggle svg {
+  display: block;
+}
+.submenu-caret {
+  display: inline-flex;
+  align-items: center;
+}
+.submenu-caret svg {
+  width: 12px;
+  height: 12px;
+}
+/* console collapse chevron: points down when open, up when collapsed */
+.console-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.12s ease;
+  transform: rotate(90deg);
+}
+.console.collapsed .console-toggle svg {
+  transform: rotate(-90deg);
+}
+/* file-row icon colors: folders warm, .rs crab-red, everything else muted */
+.file-item.dir .file-ic {
+  color: var(--accent-2);
+}
+.file-item.rs .file-ic {
+  color: var(--accent);
+}
+
+/* ---- unsaved indicator: white dot at the right of the file's row ---------- */
+.file-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--c-pale);
+  opacity: 0;
+}
+.file-item.dirty .file-dot {
+  opacity: 1;
+}
+
+/* ---- File ▸ Examples flyout submenu --------------------------------------- */
+.submenu {
+  position: relative;
+}
+.submenu-items {
+  display: none;
+  position: absolute;
+  top: -5px;
+  left: 100%;
+  z-index: 21;
+  min-width: 160px;
+  margin-left: -1px; /* overlap the parent so hover doesn't drop in a gap */
+  padding: 4px;
+  background: var(--bg-raise);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+.submenu:hover > .submenu-items {
+  display: block;
+}
+
+/* ---- console input row (terminal-style) ----------------------------------- */
+.console-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+.console.collapsed .console-input-row {
+  display: none;
+}
+.console-prompt {
+  color: var(--c-clay);
+  font-weight: 700;
+}
+.console-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  outline: none;
+}
+.console-input::placeholder {
+  color: var(--muted);
+}
+
+/* ---- ".ino → .rs" guide overlay (read-only) ------------------------------- */
+.guide-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+}
+.guide-overlay[hidden] {
+  display: none;
+}
+.guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--bg-raise);
+  border-bottom: 2px solid var(--border);
+}
+.guide-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+.guide-body {
+  flex: 1;
+  width: 100%;
+  padding: 18px 32px 48px;
+  overflow: auto;
+  /* Base on the editor's font so the guide matches the code and scales with the
+     same Ctrl+zoom (setFont bumps --editor-font). All children size in `em`. */
+  font-size: var(--editor-font);
+  line-height: 1.55;
+}
+.guide-lead,
+.guide-outro {
+  font-size: 0.82em;
+  color: var(--text);
+}
+.guide-outro {
+  margin-top: 1em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--border);
+}
+.guide-body h3 {
+  margin: 1em 0 0.3em;
+  padding-bottom: 0.25em;
+  font-size: 0.9em;
+  color: var(--accent-2);
+  border-bottom: 1px solid var(--border);
+}
+.guide-body p {
+  font-size: 0.78em;
+  color: color-mix(in srgb, var(--c-pale) 80%, var(--c-mauve));
+}
+.guide-body code {
+  padding: 0 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: var(--c-clay);
+}
+.snippet {
+  margin: 0.5em 0;
+}
+.snippet .lang {
+  margin-bottom: 0.2em;
+  font-size: 0.45em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.snippet .lang.rust {
+  color: var(--accent);
+}
+.guide-body pre.code {
+  margin: 0;
+  padding: 0.5em 0.7em;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 1em; /* exactly the editor's code size */
+  line-height: 1.5;
+  color: var(--c-pale);
+  white-space: pre;
 }

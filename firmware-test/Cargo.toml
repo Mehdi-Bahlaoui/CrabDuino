@@ -3,11 +3,9 @@ name = "firmware"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-
-[[bin]]
-name = "firmware"
-test = false
-bench = false
+# Each file under src/bin/ is its own binary (blink, screen, …). The IDE builds
+# the open file with `--bin <name>`; a bare `cargo run` falls back to blink.
+default-run = "blink"
 
 [dependencies]
 panic-halt = "1.0.0"
