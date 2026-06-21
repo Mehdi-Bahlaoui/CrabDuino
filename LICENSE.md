@@ -22,7 +22,7 @@ Change Date: 2030-06-21
 Change License: Apache License, Version 2.0
 
 For information about alternative licensing arrangements for the Licensed Work,
-please contact: midougame3@gmail.com
+please contact: mehdibahlaoui3.com
 
 Terms
 
