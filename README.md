@@ -1,13 +1,13 @@
-# CrabDuino 🦀
+<img width="1260" height="324" alt="Image" src="https://github.com/user-attachments/assets/892236d5-834b-4a2d-b2ca-e22e5c78519d" />
 
 A desktop IDE for programming the **Arduino Uno in Rust**.
 
-You write Rust against [`arduino-hal`](https://github.com/rahix/avr-hal) directly —
-there is **no `.ino` file and no C++ translation**. CrabDuino edits a real Rust
-project, then builds and flashes it to a connected board with one click.
+You write real Rust code - **no `.ino` file or no C++ translation**.
+CrabDuino creates or opens a folder for you, then lets you build and flashe it to your Arduino Uno with one click.
 
-It's a [Tauri v2](https://tauri.app) app: a small Rust backend plus a buildless
-HTML/CSS/JS frontend (no npm, no Node, no bundler).
+The IDE itself is also written in Rust!
+The backend uses [`arduino-hal`](https://github.com/rahix/avr-hal).
+The frontend is a [Tauri v2](https://tauri.app) app with HTML/CSS/JS for styling and positioning.
 
 > Working on CrabDuino itself? See **[DEVELOPER.md](DEVELOPER.md)** for how the
 > build pipeline and backend actually work. This file is just how to run it.
