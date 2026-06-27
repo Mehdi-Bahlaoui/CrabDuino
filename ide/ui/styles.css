@@ -320,9 +320,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 18px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   font-weight: 700;
   color: var(--accent-2);
+  /* Fake a heavier weight + lift the warm text off the slate so it reads
+     crisply instead of vibrating against the background. */
+  -webkit-text-stroke: 0.35px var(--accent-2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 .sidebar-root-icon {
   flex: none;
@@ -331,9 +335,10 @@ body {
   color: var(--accent-2);
 }
 .sidebar-root-icon svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2.8;
+  width: 19px;
+  height: 19px;
+  stroke-width: 2.6;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
 }
 .sidebar-actions {
   margin-left: auto;
@@ -353,8 +358,12 @@ body {
   cursor: pointer;
 }
 .ic-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
+  /* Thicker stroke + a soft shadow so the action icons stand out against the
+     mid-tone sidebar instead of looking scrawny. */
+  stroke-width: 2.4;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.4));
 }
 .ic-btn:hover {
   background: var(--bg-hover);
@@ -371,9 +380,13 @@ body {
 }
 .empty-project {
   padding: 14px 8px;
-  color: var(--muted);
+  /* Brighter than --muted (derived from the same palette) + a heavier weight
+     so the prompt is comfortably legible without straining. */
+  color: color-mix(in srgb, var(--c-pale) 72%, var(--c-mauve));
   font-size: 13px;
-  line-height: 1.45;
+  font-weight: 600;
+  line-height: 1.5;
+  text-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.4);
 }
 .file-item {
   display: flex;

@@ -1,0 +1,5 @@
+.*
+# Keep the gitignore itself and the GitHub Pages deploy workflow tracked,
+# even though the blanket ".*" above would otherwise ignore them.
+!/.gitignore
+!/.github/
