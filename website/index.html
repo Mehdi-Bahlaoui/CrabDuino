@@ -12,9 +12,10 @@
     <meta name="theme-color" content="#434959" />
     <meta name="color-scheme" content="dark" />
 
-    <!-- Favicon: the crab mark, inline SVG so it works offline / no extra request -->
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="favicon.svg" />
+    <!-- Favicon: the CrabDuino logo -->
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" href="favicon-64.png" type="image/png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
     <!-- Open Graph / social sharing -->
     <meta property="og:type" content="website" />
@@ -51,6 +52,8 @@
   <body>
     <!-- pointer glow + animated aurora live behind everything -->
     <div class="cursor-glow" aria-hidden="true"></div>
+    <!-- spotlight veil: blurs the whole page when the hero mockup is hovered -->
+    <div class="spotlight-veil" aria-hidden="true"></div>
     <div class="aurora" aria-hidden="true">
       <span class="blob blob-1"></span>
       <span class="blob blob-2"></span>
@@ -62,20 +65,7 @@
     <header class="nav" id="nav">
       <a class="brand" href="#top" aria-label="CrabDuino home">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 64 64" width="30" height="30">
-            <g fill="none" stroke="currentColor" stroke-width="3.4"
-               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 40c-6 0-10-4-12-9" />
-              <path d="M48 40c6 0 10-4 12-9" />
-              <path d="M20 30c-5-3-7-9-6-15" />
-              <path d="M44 30c5-3 7-9 6-15" />
-              <ellipse cx="32" cy="40" rx="17" ry="12"
-                       fill="currentColor" fill-opacity="0.16" />
-              <path d="M14 44c4 6 11 9 18 9s14-3 18-9" />
-            </g>
-            <circle cx="25" cy="38" r="2.6" fill="currentColor" />
-            <circle cx="39" cy="38" r="2.6" fill="currentColor" />
-          </svg>
+          <img class="brand-logo" src="logo.png" alt="" width="40" height="40" />
         </span>
         <span class="brand-name">Crab<span class="accent">Duino</span></span>
       </a>
@@ -84,6 +74,7 @@
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
         <a href="#code">The code</a>
+        <a href="#reviews">Reviews</a>
         <a href="#download" class="nav-cta">Download</a>
       </nav>
 
@@ -185,7 +176,6 @@
 
         <div class="cards">
           <article class="card reveal" data-tilt>
-            <div class="card-ic">⚡</div>
             <h3>One-click build &amp; flash</h3>
             <p>
               Hit <b>Build</b> to compile, <b>Flash</b> to program your Uno and
@@ -195,7 +185,6 @@
           </article>
 
           <article class="card reveal" data-tilt>
-            <div class="card-ic">🦀</div>
             <h3>Real Rust, not <code>.ino</code></h3>
             <p>
               No sketch translation layer. You write genuine
@@ -205,7 +194,6 @@
           </article>
 
           <article class="card reveal" data-tilt>
-            <div class="card-ic">📦</div>
             <h3>Tiny binaries</h3>
             <p>
               Tuned profiles — <code>LTO</code>, <code>opt-level&nbsp;=&nbsp;s</code>,
@@ -215,7 +203,6 @@
           </article>
 
           <article class="card reveal" data-tilt>
-            <div class="card-ic">🔌</div>
             <h3>Live serial console</h3>
             <p>
               Output streams straight into the IDE as your program runs.
@@ -225,7 +212,6 @@
           </article>
 
           <article class="card reveal" data-tilt>
-            <div class="card-ic">🗂️</div>
             <h3>VS Code-style explorer</h3>
             <p>
               A real file tree over your firmware: create, rename, drag, drop,
@@ -234,7 +220,6 @@
           </article>
 
           <article class="card reveal" data-tilt>
-            <div class="card-ic">🎨</div>
             <h3>One locked, lovely theme</h3>
             <p>
               A hand-picked five-color palette and a single mono typeface —
@@ -328,6 +313,52 @@
         </div>
       </section>
 
+      <!-- ===== REVIEWS ============================================== -->
+      <section class="section" id="reviews">
+        <header class="section-head reveal">
+          <p class="kicker">Reviews</p>
+          <h2>What people are saying.</h2>
+          <p class="lede">
+            Early builders putting real Rust on real boards. <!-- TODO: replace
+            the placeholder quotes below with real testimonials. -->
+          </p>
+        </header>
+
+        <div class="reviews">
+          <!-- TODO: replace quote, name, and handle with a real review -->
+          <figure class="review reveal" data-tilt>
+            <div class="stars" aria-label="5 out of 5">★★★★★</div>
+            <blockquote>
+              “Your review goes here — swap this placeholder for a real quote
+              about what CrabDuino made easy.”
+            </blockquote>
+            <figcaption class="review-by">
+              <span class="review-avatar" aria-hidden="true">?</span>
+              <span>
+                <b>Reviewer name</b>
+                <small>Role / @handle</small>
+              </span>
+            </figcaption>
+          </figure>
+
+          <!-- TODO: replace quote, name, and handle with a real review -->
+          <figure class="review reveal" data-tilt>
+            <div class="stars" aria-label="5 out of 5">★★★★★</div>
+            <blockquote>
+              “Another spot for a real testimonial — keep it short, specific,
+              and in the reviewer's own words.”
+            </blockquote>
+            <figcaption class="review-by">
+              <span class="review-avatar" aria-hidden="true">?</span>
+              <span>
+                <b>Reviewer name</b>
+                <small>Role / @handle</small>
+              </span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
       <!-- ===== DOWNLOAD / CTA ======================================= -->
       <section class="cta" id="download">
         <div class="cta-inner reveal">
@@ -357,23 +388,40 @@
     <footer class="footer">
       <div class="footer-brand">
         <span class="brand-name">Crab<span class="accent">Duino</span></span>
-        <p>Real Rust for the Arduino Uno.</p>
+        <p>A desktop IDE for programming the Arduino Uno in Rust.</p>
       </div>
       <div class="footer-cols">
         <div>
           <h4>Product</h4>
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
+          <a href="#code">The code</a>
           <a href="#download">Download</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/Mehdi-Bahlaoui/CrabDuino">Source on GitHub</a>
+          <a href="https://github.com/Mehdi-Bahlaoui/CrabDuino/releases">Releases (v0.1.0)</a>
+          <a href="https://github.com/Mehdi-Bahlaoui/CrabDuino/issues">Report an issue</a>
+          <a href="https://github.com/Mehdi-Bahlaoui/CrabDuino/blob/main/LICENSE.md">License</a>
         </div>
         <div>
           <h4>Built on</h4>
           <a href="https://github.com/rahix/avr-hal">avr-hal</a>
+          <a href="https://github.com/Rahix/avr-hal/tree/main/ravedude">ravedude</a>
           <a href="https://tauri.app">Tauri</a>
           <a href="https://www.rust-lang.org">Rust</a>
         </div>
       </div>
-      <p class="footer-fine">© 2026 CrabDuino · Made with 🦀 and a soldering iron.</p>
+      <p class="footer-fine">
+        © 2026 Mehdi Bahlaoui. Licensed under the
+        <a href="https://github.com/Mehdi-Bahlaoui/CrabDuino/blob/main/LICENSE.md"
+          >Business Source License 1.1</a
+        >
+        — free for personal, educational &amp; non-commercial use; converts to
+        Apache-2.0 on 2030-06-21. ·
+        <a href="mailto:mehdibahlaoui3@gmail.com">mehdibahlaoui3@gmail.com</a>
+      </p>
     </footer>
 
     <script src="script.js"></script>

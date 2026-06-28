@@ -9,7 +9,7 @@
   --pale: #dcf2f2; /* lightest — text               */
   --mauve: #6c6466; /* neutral  — muted / borders    */
   --clay: #bf7e6f; /* warm     — secondary accent    */
-  --red: #bf5050; /* accent   — primary action      */
+  --red: #fd4801; /* accent   — primary action (CrabDuino logo orange) */
 
   /* Derived surfaces (computed from the palette). */
   --bg: color-mix(in srgb, var(--slate) 58%, #000);
@@ -89,7 +89,9 @@ code {
   animation: drift 22s var(--ease) infinite alternate;
 }
 .blob-1 {
-  background: var(--red);
+  /* Darker, calmer orange so the bright accent doesn't overwhelm the page. */
+  background: color-mix(in srgb, var(--red) 48%, #000);
+  opacity: 0.32;
   top: -12vw;
   left: -8vw;
 }
@@ -178,17 +180,19 @@ code {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  color: var(--clay);
-  background: color-mix(in srgb, var(--clay) 16%, transparent);
-  border: 1px solid var(--line);
-  transition: transform 0.4s var(--ease), color 0.3s;
+  width: 46px;
+  height: 46px;
+  /* Transparent — the outlined logo stands on its own, no tile. */
+  transition: transform 0.4s var(--ease);
+}
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
 }
 .brand:hover .brand-mark {
   transform: rotate(-8deg) scale(1.06);
-  color: var(--red);
 }
 .brand-name {
   font-size: 19px;
@@ -417,6 +421,9 @@ h2 {
 /* ---- window / code mockups ------------------------------------------------ */
 .hero-app {
   position: relative;
+  /* Keep the ::after aura contained behind the window at all times so it never
+     flickers in front of siblings while fading out. */
+  isolation: isolate;
 }
 .window {
   border-radius: 16px;
@@ -532,7 +539,9 @@ h2 {
 }
 .terminal-body {
   padding: 12px 16px;
-  min-height: 86px;
+  /* Reserve room for all 5 output lines so the window never changes height as
+     text is typed in — otherwise the hero title bobs up/down beside it. */
+  min-height: 136px;
   font-size: 12.5px;
   line-height: 1.7;
 }
@@ -591,6 +600,76 @@ h2 {
   box-shadow: 0 0 12px 2px color-mix(in srgb, var(--red) 80%, transparent);
 }
 
+/* ---- hero mockup "spotlight" --------------------------------------------- */
+/* On hover the whole page blurs+dims behind a fixed veil while the mockup is
+   lifted above it and lit by a warm golden aura — both fade in together.
+   (The gold is an intentional one-off accent outside the locked palette.) */
+.spotlight-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 200; /* above the nav (100) so everything behind the mockup blurs */
+  opacity: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 32%, transparent);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  transition: opacity 0.5s var(--ease);
+}
+body.spotlight .spotlight-veil {
+  opacity: 1;
+}
+body.spotlight .hero-app {
+  z-index: 300; /* lift the mockup above the veil so it stays sharp */
+}
+/* huge soft outer halo — the "majestic" bloom that spreads onto the page */
+.hero-app::before {
+  content: "";
+  position: absolute;
+  inset: -55%;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 198, 86, 0.5),
+    rgba(255, 172, 52, 0.18) 55%,
+    transparent 78%
+  );
+  opacity: 0;
+  filter: blur(60px);
+  /* starts tiny at the center, then blooms outward on hover */
+  transform: scale(0.35);
+  transform-origin: center;
+  transition: opacity 0.7s var(--ease), transform 0.8s var(--ease);
+  pointer-events: none;
+}
+/* bright golden core hugging the window */
+.hero-app::after {
+  content: "";
+  position: absolute;
+  inset: -16%;
+  z-index: -1;
+  border-radius: 36px;
+  background: radial-gradient(
+    62% 58% at 50% 45%,
+    rgba(255, 216, 122, 0.9),
+    rgba(255, 186, 70, 0.42) 45%,
+    transparent 72%
+  );
+  opacity: 0;
+  filter: blur(30px);
+  transform: scale(0.25);
+  transform-origin: center;
+  transition: opacity 0.6s var(--ease), transform 0.7s var(--ease);
+  pointer-events: none;
+}
+body.spotlight .hero-app::before {
+  opacity: 1;
+  transform: scale(1.1);
+}
+body.spotlight .hero-app::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
 /* ---- marquee -------------------------------------------------------------- */
 .marquee {
   border-top: 1px solid var(--line);
@@ -627,12 +706,13 @@ h2 {
 }
 .card {
   position: relative;
-  padding: 28px;
+  padding: 32px 28px;
   border-radius: 18px;
   background: color-mix(in srgb, var(--slate) 82%, #000);
   border: 1px solid var(--line);
   transition: transform 0.3s var(--ease), border-color 0.3s, background 0.3s;
   overflow: hidden;
+  text-align: center;
 }
 .card::before {
   content: "";
@@ -653,24 +733,69 @@ h2 {
 .card:hover::before {
   opacity: 1;
 }
-.card-ic {
-  font-size: 26px;
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  margin-bottom: 18px;
-  background: color-mix(in srgb, var(--red) 14%, transparent);
-  border: 1px solid var(--line);
-}
 .card h3 {
-  font-size: 18px;
-  margin-bottom: 8px;
+  font-size: 21px;
+  margin-bottom: 10px;
 }
 .card p {
   color: var(--muted);
   font-size: 14.5px;
+}
+
+/* ---- reviews -------------------------------------------------------------- */
+.reviews {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  max-width: 940px;
+  margin: 0 auto;
+}
+.review {
+  padding: 30px 30px 26px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--slate) 82%, #000);
+  border: 1px solid var(--line);
+  transition: transform 0.3s var(--ease), border-color 0.3s;
+}
+.review:hover {
+  border-color: color-mix(in srgb, var(--clay) 55%, transparent);
+}
+.stars {
+  color: var(--red);
+  letter-spacing: 0.18em;
+  font-size: 15px;
+  margin-bottom: 14px;
+}
+.review blockquote {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.review-by {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.review-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  background: color-mix(in srgb, var(--clay) 22%, transparent);
+  border: 1px solid var(--line);
+  color: var(--clay);
+  font-weight: 700;
+}
+.review-by b {
+  display: block;
+  font-size: 14px;
+}
+.review-by small {
+  color: var(--muted);
+  font-size: 12.5px;
 }
 
 /* ---- steps ---------------------------------------------------------------- */
@@ -796,7 +921,7 @@ h2 {
   padding: 56px clamp(18px, 5vw, 40px) 48px;
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.2fr 2fr;
   gap: 40px;
 }
 .footer-brand p {
@@ -806,8 +931,8 @@ h2 {
 }
 .footer-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
 }
 .footer-cols h4 {
   font-size: 13px;
@@ -833,6 +958,14 @@ h2 {
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.7;
+}
+.footer-fine a {
+  color: var(--clay);
+  transition: color 0.2s;
+}
+.footer-fine a:hover {
+  color: var(--text);
 }
 
 /* ---- reveal-on-scroll ----------------------------------------------------- */
@@ -901,6 +1034,7 @@ h2 {
 @media (max-width: 560px) {
   .cards,
   .steps,
+  .reviews,
   .footer,
   .footer-cols {
     grid-template-columns: 1fr;

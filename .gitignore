@@ -3,3 +3,4 @@
 # even though the blanket ".*" above would otherwise ignore them.
 !/.gitignore
 !/.github/
+script.md

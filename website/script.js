@@ -84,6 +84,33 @@
     });
   }
 
+  /* ---- hero mockup spotlight: blur the page + golden aura on hover -------- */
+  if (finePointer && !reduceMotion) {
+    const heroApp = $(".hero-app");
+    if (heroApp) {
+      // While the auto-scroll runs we ignore the pointerleave it fires, then
+      // re-check :hover so the spotlight can't get stuck on or flicker.
+      let lock = false;
+      let lockTimer = 0;
+      heroApp.addEventListener("pointerenter", () => {
+        document.body.classList.add("spotlight");
+        lock = true;
+        clearTimeout(lockTimer);
+        // center the mockup in the viewport so it reads as the focal point
+        heroApp.scrollIntoView({ behavior: "smooth", block: "center" });
+        lockTimer = setTimeout(() => {
+          lock = false;
+          if (!heroApp.matches(":hover"))
+            document.body.classList.remove("spotlight");
+        }, 650);
+      });
+      heroApp.addEventListener("pointerleave", () => {
+        if (lock) return;
+        document.body.classList.remove("spotlight");
+      });
+    }
+  }
+
   /* ---- hero: animated build/flash output + LED blink --------------------- */
   const termBody = $("#termBody");
   const led = $("#boardLed");
