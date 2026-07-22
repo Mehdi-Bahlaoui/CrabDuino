@@ -8,6 +8,8 @@ RESOURCES="$ROOT/ide/src-tauri/package-resources"
 # enough: install the developer prerequisites once, then run this script.
 RUST_TOOLCHAIN="nightly-2025-04-27"
 RUST_RESOURCE_DIR="rust-nightly-2025-04-27"
+# Source of the firmware template that ships as `firmware-template/`.
+FIRMWARE_DIR="firmware-test"
 SYSTEM_AVR_BIN_DIR="/usr/bin"
 SYSTEM_AVR_GCC_DIR="/usr/lib/gcc/avr"
 SYSTEM_AVR_LIB_DIR="/usr/lib/avr"
@@ -129,12 +131,19 @@ mkdir -p \
   "$RESOURCES/toolchains/avrdude/etc"
 
 tar -C "$ROOT" \
-  --exclude='firmware/target' \
-  --exclude='firmware/.git' \
-  -cf - firmware |
+  --exclude="$FIRMWARE_DIR/target" \
+  --exclude="$FIRMWARE_DIR/.git" \
+  -cf - "$FIRMWARE_DIR" |
   tar -C "$RESOURCES/firmware-template" --strip-components=1 -xf -
 
-(cd "$ROOT/firmware" && cargo vendor --locked "$RESOURCES/vendor" > "$RESOURCES/vendor-config.toml")
+# The firmware builds with `-Z build-std`, so cargo resolves the toolchain's own
+# library workspace on top of the firmware's dependency graph. Vendoring only the
+# firmware misses that half of the graph and the offline build then dies on the
+# first sysroot-only crate (e.g. proc_macro's rustc-literal-escaper). `--sync`
+# pulls the library workspace into the same vendor directory.
+RUST_LIBRARY_MANIFEST="$RUST_SYSROOT/lib/rustlib/src/rust/library/Cargo.toml"
+require_file "$RUST_LIBRARY_MANIFEST"
+(cd "$ROOT/$FIRMWARE_DIR" && cargo vendor --locked --sync "$RUST_LIBRARY_MANIFEST" "$RESOURCES/vendor" > "$RESOURCES/vendor-config.toml")
 
 cp -a "$RUST_SYSROOT" "$RESOURCES/toolchains/$RUST_RESOURCE_DIR"
 find "$SYSTEM_AVR_BIN_DIR" -maxdepth 1 -name 'avr-*' -exec cp -a {} "$RESOURCES/toolchains/avr/bin/" \;
@@ -189,6 +198,40 @@ MANIFEST
 "$RESOURCES/toolchains/avr/bin/avr-gcc" --version >/dev/null
 "$RESOURCES/bin/ravedude" --version >/dev/null
 "$RESOURCES/bin/avrdude" -? >/dev/null 2>&1
+
+# Offline smoke build: compile the staged template with the staged toolchain and
+# vendor directory, using only what a freshly installed .deb would have. This is
+# what catches an incomplete vendor directory here rather than on a user's
+# machine after Verify fails. The build runs on a throwaway copy so the staged
+# template (and the SHA256SUMS written above) stay untouched.
+SMOKE_DIR="$(mktemp -d)"
+trap 'rm -rf "$SMOKE_DIR"' EXIT
+cp -a "$RESOURCES/firmware-template" "$SMOKE_DIR/project"
+mkdir -p "$SMOKE_DIR/cargo-home"
+cat > "$SMOKE_DIR/cargo-home/config.toml" <<SMOKECONFIG
+$(sed "s#^directory = .*#directory = \"$RESOURCES/vendor\"#" "$RESOURCES/vendor-config.toml")
+
+[net]
+offline = true
+SMOKECONFIG
+
+echo "Running offline smoke build of the staged template…"
+# Run from inside the project: cargo reads `.cargo/config.toml` — which selects
+# the AVR target and build-std — relative to the working directory, not the
+# manifest path. Building from elsewhere silently targets the host instead.
+if ! (cd "$SMOKE_DIR/project" && \
+     CARGO_HOME="$SMOKE_DIR/cargo-home" \
+     CARGO_NET_OFFLINE=true \
+     RUSTC="$RESOURCES/toolchains/$RUST_RESOURCE_DIR/bin/rustc" \
+     PATH="$RESOURCES/bin:$RESOURCES/toolchains/avr/bin:$PATH" \
+     "$RESOURCES/toolchains/$RUST_RESOURCE_DIR/bin/cargo" build \
+       --release --bin blink); then
+  echo "offline smoke build failed: the staged resources cannot build a sketch" >&2
+  echo "a missing crate here usually means the vendor directory is incomplete" >&2
+  exit 1
+fi
+rm -rf "$SMOKE_DIR"
+trap - EXIT
 
 if [[ "$STAGE_ONLY" == "1" ]]; then
   echo "Staged package resources in $RESOURCES"

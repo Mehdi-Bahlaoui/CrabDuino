@@ -57,7 +57,7 @@ struct AppState {
 
 fn dev_firmware_dir() -> PathBuf {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let candidate = manifest.join("../../firmware");
+    let candidate = manifest.join("../../firmware-test");
     candidate.canonicalize().unwrap_or(candidate)
 }
 
@@ -327,24 +327,27 @@ fn is_uno(vid: u16, pid: u16) -> bool {
 /// pass the port to `flash`.
 #[tauri::command]
 async fn detect_board() -> Option<DetectedBoard> {
-    tauri::async_runtime::spawn_blocking(|| {
-        let ports = serialport::available_ports().ok()?;
-        for p in ports {
-            if let serialport::SerialPortType::UsbPort(usb) = p.port_type {
-                if is_uno(usb.vid, usb.pid) {
-                    return Some(DetectedBoard {
-                        board: "uno".into(),
-                        label: "Arduino Uno".into(),
-                        port: p.port_name,
-                    });
-                }
+    tauri::async_runtime::spawn_blocking(detect_board_blocking)
+        .await
+        .ok()
+        .flatten()
+}
+
+/// Synchronous half of `detect_board`, shared with the environment doctor.
+fn detect_board_blocking() -> Option<DetectedBoard> {
+    let ports = serialport::available_ports().ok()?;
+    for p in ports {
+        if let serialport::SerialPortType::UsbPort(usb) = p.port_type {
+            if is_uno(usb.vid, usb.pid) {
+                return Some(DetectedBoard {
+                    board: "uno".into(),
+                    label: "Arduino Uno".into(),
+                    port: p.port_name,
+                });
             }
         }
-        None
-    })
-    .await
-    .ok()
-    .flatten()
+    }
+    None
 }
 
 /// Canonical path of the active project directory, for seeding the file tree.
@@ -386,6 +389,26 @@ fn command_first_line(program: &Path, args: &[&str]) -> Option<String> {
         .chain(stderr.lines())
         .find(|line| !line.trim().is_empty())
         .map(|line| line.trim().to_string())
+}
+
+/// Like `command_first_line`, but keeps output from tools that report their
+/// version with a non-zero exit status, returning the first line containing
+/// `needle`.
+///
+/// `avrdude -v` prints its version banner and *then* exits 1 because no
+/// programmer was given. Judging it by exit status alone reports a perfectly
+/// good binary as "not runnable", so match on the banner instead. A genuinely
+/// missing or non-executable binary still fails at spawn and yields `None`.
+fn command_line_containing(program: &Path, args: &[&str], needle: &str) -> Option<String> {
+    let out = Command::new(program).args(args).output().ok()?;
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    stdout
+        .lines()
+        .chain(stderr.lines())
+        .map(str::trim)
+        .find(|line| line.contains(needle))
+        .map(str::to_string)
 }
 
 /// Open a native directory picker; returns the chosen folder, or `None` if the
@@ -1008,6 +1031,94 @@ async fn reset_connection(app: AppHandle) -> Result<(), String> {
     .await
 }
 
+/// Can the current user read and write this device node?
+///
+/// Uses `access(2)` rather than opening the port: opening a USB-serial device
+/// asserts DTR, which resets the Arduino. A doctor run should not reboot the
+/// user's board.
+#[cfg(target_os = "linux")]
+fn port_is_accessible(port: &str) -> bool {
+    let Ok(path) = std::ffi::CString::new(port) else {
+        return false;
+    };
+    // SAFETY: `path` is a valid NUL-terminated C string for the call's duration.
+    unsafe { libc::access(path.as_ptr(), libc::R_OK | libc::W_OK) == 0 }
+}
+
+/// Is the udev rule the package ships installed?
+#[cfg(target_os = "linux")]
+fn crabduino_udev_rule_installed() -> bool {
+    [
+        "/usr/lib/udev/rules.d",
+        "/etc/udev/rules.d",
+        "/lib/udev/rules.d",
+    ]
+    .iter()
+    .any(|dir| {
+        Path::new(dir)
+            .join("60-crabduino-arduino.rules")
+            .is_file()
+    })
+}
+
+/// Report whether flashing will actually be permitted.
+///
+/// The package's udev rule grants access through a `uaccess` ACL, so the old
+/// dialout-membership test reported a warning on machines where Upload works
+/// fine. Prefer the direct question — can we write to the port in front of us —
+/// and fall back to describing the setup only when no board is plugged in.
+#[cfg(target_os = "linux")]
+fn doctor_check_serial_permission(checks: &mut Vec<DoctorCheck>) {
+    const REPLUG_FIX: &str = "Unplug and replug the board. If it still fails, run: sudo usermod -aG dialout \"$USER\"; then log out and back in.";
+    const GROUP_FIX: &str =
+        "Reinstall the CrabDuino package, or run: sudo usermod -aG dialout \"$USER\"; then log out and back in.";
+
+    if let Some(board) = detect_board_blocking() {
+        let accessible = port_is_accessible(&board.port);
+        doctor_check(
+            checks,
+            "Serial permission",
+            if accessible { "ok" } else { "error" },
+            if accessible {
+                format!("{} is readable and writable", board.port)
+            } else {
+                format!("{} is not writable by the current user", board.port)
+            },
+            if accessible { None } else { Some(REPLUG_FIX) },
+        );
+        return;
+    }
+
+    // No board connected, so there is nothing to test against. Report how access
+    // would be granted instead.
+    if crabduino_udev_rule_installed() {
+        doctor_check(
+            checks,
+            "Serial permission",
+            "ok",
+            "CrabDuino's udev rule is installed; plug in a board to confirm access",
+            None,
+        );
+        return;
+    }
+
+    let groups = command_first_line(Path::new("id"), &["-nG"]).unwrap_or_default();
+    let has_serial_group = groups
+        .split_whitespace()
+        .any(|g| matches!(g, "dialout" | "uucp"));
+    doctor_check(
+        checks,
+        "Serial permission",
+        if has_serial_group { "ok" } else { "warn" },
+        if has_serial_group {
+            "no board connected; current user is in a common serial-port group"
+        } else {
+            "no board connected; CrabDuino's udev rule is not installed and the user is not in dialout/uucp"
+        },
+        if has_serial_group { None } else { Some(GROUP_FIX) },
+    );
+}
+
 /// Check the packaged runtime and the host pieces that still matter on Linux.
 #[tauri::command]
 async fn environment_doctor() -> Result<DoctorReport, String> {
@@ -1185,7 +1296,7 @@ async fn environment_doctor() -> Result<DoctorReport, String> {
         );
 
         let avrdude = resource_file("bin/avrdude").unwrap_or_else(|| PathBuf::from("avrdude"));
-        let avrdude_version = command_first_line(&avrdude, &["-v"]);
+        let avrdude_version = command_line_containing(&avrdude, &["-v"], "Version");
         doctor_check(
             &mut checks,
             "AVRDUDE",
@@ -1226,25 +1337,7 @@ async fn environment_doctor() -> Result<DoctorReport, String> {
 
         #[cfg(target_os = "linux")]
         {
-            let groups = command_first_line(Path::new("id"), &["-nG"]).unwrap_or_default();
-            let has_serial_group = groups
-                .split_whitespace()
-                .any(|g| matches!(g, "dialout" | "uucp"));
-            doctor_check(
-                &mut checks,
-                "Serial permission",
-                if has_serial_group { "ok" } else { "warn" },
-                if has_serial_group {
-                    "current user is in a common serial-port group"
-                } else {
-                    "current user is not in dialout/uucp"
-                },
-                if has_serial_group {
-                    None
-                } else {
-                    Some("Run: sudo usermod -aG dialout \"$USER\"; then log out and back in.")
-                },
-            );
+            doctor_check_serial_permission(&mut checks);
         }
 
         Ok(DoctorReport { checks })

@@ -1,0 +1,34 @@
+# CrabDuino: make Arduino Uno serial ports usable without manual setup.
+#
+# TAG+="uaccess" asks systemd-logind to put an ACL for the user at the active
+# seat on the device node. That is what lets Upload work right after install,
+# with no `usermod -aG dialout` and no logout/login cycle.
+#
+# GROUP/MODE are the fallback for systems without logind ACLs (and for remote
+# or headless sessions, which have no active seat and so get no uaccess ACL).
+# There a dialout membership is still required.
+#
+# The VID/PID list mirrors `is_uno()` in ide/src-tauri/src/lib.rs — the genuine
+# Uno's ATmega16U2 bridge plus the USB-serial chips used by common clones. Keep
+# the two lists in sync.
+
+ACTION!="add|change", GOTO="crabduino_end"
+SUBSYSTEM!="tty", GOTO="crabduino_end"
+
+# Genuine Arduino Uno R3 / Uno
+ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", TAG+="uaccess", GROUP="dialout", MODE="0660"
+ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0001", TAG+="uaccess", GROUP="dialout", MODE="0660"
+
+# Arduino.org Uno
+ATTRS{idVendor}=="2a03", ATTRS{idProduct}=="0043", TAG+="uaccess", GROUP="dialout", MODE="0660"
+ATTRS{idVendor}=="2a03", ATTRS{idProduct}=="0001", TAG+="uaccess", GROUP="dialout", MODE="0660"
+
+# WCH CH340/CH341 clone bridge
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", TAG+="uaccess", GROUP="dialout", MODE="0660"
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="5523", TAG+="uaccess", GROUP="dialout", MODE="0660"
+
+# FTDI FT232 clone bridge
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", TAG+="uaccess", GROUP="dialout", MODE="0660"
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", TAG+="uaccess", GROUP="dialout", MODE="0660"
+
+LABEL="crabduino_end"

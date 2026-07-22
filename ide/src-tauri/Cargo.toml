@@ -1,6 +1,6 @@
 [package]
 name = "crabduino"
-version = "0.1.0"
+version = "0.1.1"
 description = "CrabDuino — write Rust for the Arduino Uno, build and flash it"
 authors = ["mehdi"]
 edition = "2021"

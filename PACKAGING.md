@@ -21,8 +21,15 @@ the Tauri resource directory:
 - AVR GCC/binutils/libc toolchain
 - ravedude
 - avrdude plus a wrapper that points at the bundled `avrdude.conf`
-- vendored Rust crates for the firmware project
+- vendored Rust crates for the firmware project **and** for the toolchain's own
+  library workspace, which `-Z build-std` also resolves
 - read-only firmware template copied to a writable user project on first launch
+
+It also installs a udev rule at
+`/usr/lib/udev/rules.d/60-crabduino-arduino.rules` that tags Arduino Uno boards
+with `uaccess`, and a `postinst` that reloads udev. That grants the desktop user
+access to the board's serial port through an ACL, so Upload works right after
+install without `usermod -aG dialout` and without logging out.
 
 Apt may still install normal Linux desktop libraries declared by the package,
 such as WebKitGTK, GTK, libudev, librsvg, and xdg-utils. Those are system GUI
@@ -38,7 +45,8 @@ scripts/package-linux-deb.sh
 
 The script stages release assets in `ide/src-tauri/package-resources/` from the
 constants at the top of the script, writes a runtime manifest and `SHA256SUMS`,
-then runs:
+compiles the staged template offline against the staged toolchain as a smoke
+test, then runs:
 
 ```bash
 cd ide
@@ -58,7 +66,14 @@ package resources without building the `.deb`.
   bundled, not host fallbacks.
 - Confirm uninstall removes app files but leaves user projects under app data.
 
-If Upload fails with serial permissions, the user fix remains:
+The staging smoke build fails the release if the vendor directory is incomplete,
+which is the failure mode that otherwise only shows up as a broken Verify on a
+user's machine.
+
+If Upload still fails with serial permissions, first unplug and replug the board
+so the udev rule applies. On systems without logind ACLs — headless or remote
+sessions have no active seat, so `uaccess` grants nothing — the group fallback
+still applies:
 
 ```bash
 sudo usermod -aG dialout "$USER"
