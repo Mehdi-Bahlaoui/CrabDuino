@@ -71,18 +71,19 @@ stack, use `scripts/package-linux-deb.sh` from the repo root. See
 ---
 
 ## Using the app
+<img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/5067120e-7f06-490f-9a58-ac584f52e94d" />
 
-| Control          | What it does                                                        |
-| ---------------- | ------------------------------------------------------------------- |
-| **File ▸ New sketch** | Create a new project with the board config and an empty `src/main.rs`. |
+| Control                | What it does                                                        |
+| ---------------------- | ------------------------------------------------------------------- |
+| **File ▸ New sketch**  | Create a new project with the board config and an empty `src/main.rs`. |
 | **File ▸ Open folder** | Switch the IDE to an existing Cargo/CrabDuino project folder.       |
-| **File explorer** | VS Code-style sidebar over the active project. Open a file to edit it. |
-| **Verify**        | `cargo build --release` for `src/main.rs`, or `cargo build --release --bin <name>` for `src/bin/<name>.rs`. |
-| **Upload**        | `cargo run --release` for `src/main.rs`, or `cargo run --release --bin <name>` for `src/bin/<name>.rs`; flashes to the **detected** Uno and opens the console. |
-| **Stop**          | Kill the running flash/console session.                             |
-| **Board**         | Shows your Arduino Uno (and its port) only while it's plugged in and detected. |
-| **Output panel**  | Live cargo/ravedude output streamed from the backend.              |
-| **Ctrl + S**      | Save the active file. `Ctrl +`/`-`/`0` and `Ctrl+scroll` zoom.      |
+| **File explorer**      | VS Code-style sidebar over the active project. Open a file to edit it. |
+| **Verify**             | `cargo build --release` for `src/main.rs`, or `cargo build --release --bin <name>` for `src/bin/<name>.rs`. |
+| **Upload**             | `cargo run --release` for `src/main.rs`, or `cargo run --release --bin <name>` for `src/bin/<name>.rs`; flashes to the **detected** Uno and opens the console. |
+| **Stop**               | Kill the running flash/console session.                             |
+| **Board**              | Shows your Arduino Uno (and its port) only while it's plugged in and detected. |
+| **Output panel**       | Live cargo/ravedude output streamed from the backend.              |
+| **Ctrl + S**           | Save the active file. `Ctrl +`/`-`/`0` and `Ctrl+scroll` zoom.      |
 
 New sketches start with an empty `src/main.rs`. Example sketches live under
 `src/bin/` (e.g. `blink.rs`, `button.rs`) and build as named binaries.
