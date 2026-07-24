@@ -2,7 +2,9 @@
 
 A desktop IDE for programming the **Arduino Uno in Rust**.
 
-You write real Rust code - **no `.ino` file or no C++ translation**.
+[Watch the Demo!!](https://www.youtube.com/watch?v=tnBrMtseJis)
+
+You write real Rust code - **no `.ino` file or C++ translation**.
 CrabDuino creates or opens a folder for you, then lets you build and flashe it to your Arduino Uno with one click.
 
 The IDE itself is also written in Rust!
